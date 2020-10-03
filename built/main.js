@@ -1,44 +1,6 @@
 "use strict";
 var $g = document.querySelector.bind(document), $a = document.querySelectorAll.bind(document), $c = document.createElement.bind(document);
 ;
-function validateZug(start, ziel) {
-    console.log("Zug von " + start + " zu " + ziel + " wird zugelassen.");
-    return true;
-}
-var brett = $g("#brett");
-if (!brett)
-    throw new Error("Missing #brett.");
-var felder = $a(".feld");
-felder.forEach(function (feld) {
-    feld.addEventListener('click', function (event) {
-        var _this = event.currentTarget, s = $g(".feld_s");
-        if (_this.classList.contains("feld_s"))
-            return _this.classList.remove("feld_s");
-        if (s) {
-            if (validateZug(Number(s.id.replace(/\D/g, "")), Number(_this.id.replace(/\D/g, "")))) {
-                if (s.classList.contains("feld_o")) {
-                    _this.classList.add("feld_o");
-                    _this.classList.remove("feld_x");
-                    s.classList.remove("feld_o");
-                }
-                else {
-                    _this.classList.add("feld_x");
-                    _this.classList.remove("feld_o");
-                    s.classList.remove("feld_x");
-                }
-                s.classList.remove("feld_s");
-            }
-            else
-                console.warn("Ungültiger Zug – Ignoriere.");
-        }
-        else {
-            if (_this.classList.contains("feld_x") || _this.classList.contains("feld_o"))
-                _this.classList.add("feld_s");
-            else
-                console.warn("Felder ohne Figuren können nicht ausgewählt werden.");
-        }
-    });
-});
 var Brett = /** @class */ (function () {
     function Brett() {
     }
@@ -80,32 +42,31 @@ var Brett = /** @class */ (function () {
                 i.id = "ix_" + x;
                 brett.appendChild(i);
             }
-            {
-                for (var y = 0; y < 6; y++) {
-                    var bf = [0, 2, 4, 7, 9, 11, 12, 14, 16, 19, 21, 23, 24, 26, 28, 31, 33, 35], i = 0, indexer = $c("div");
-                    indexer.id = "iy_" + y;
-                    indexer.className = "indexer indexer_Y";
-                    indexer.innerHTML = "<br>" + String(y);
-                    brett.appendChild(indexer);
-                    for (var x = 0; x < 6; x++) {
-                        i = (6 * y) + x;
-                        var feld = $c("div");
-                        feld.className = "feld" + ((bf.indexOf(i) + 1) ? " feld_b" : "");
-                        feld.id = "f_" + i.toString(36);
-                        feld.innerHTML = String(i) + "." + i.toString(36);
-                        feld.addEventListener('click', Brett.Feld.clickListener);
-                        brett.appendChild(feld);
-                    }
-                }
-            }
-            {
-                for (var dez = 0; dez < 36; dez++) {
-                    this.felder[dez] = new Brett.Feld(dez.toString(36));
-                }
-            }
-            return this.applyStellung(start || new Stellung("012345.uvwxyz"));
         }
-        /**Wendet eine `Stellung` an, ohne diese zu überprüfen. */
+        {
+            for (var y = 0; y < 6; y++) {
+                var bf = [0, 2, 4, 7, 9, 11, 12, 14, 16, 19, 21, 23, 24, 26, 28, 31, 33, 35], i = 0, indexer = $c("div");
+                indexer.id = "iy_" + y;
+                indexer.className = "indexer indexer_Y";
+                indexer.innerHTML = "<br>" + String(y);
+                brett.appendChild(indexer);
+                for (var x = 0; x < 6; x++) {
+                    i = (6 * y) + x;
+                    var feld = $c("div");
+                    feld.className = "feld" + ((bf.indexOf(i) + 1) ? " feld_b" : "");
+                    feld.id = "f_" + i.toString(36);
+                    feld.innerHTML = String(i) + "." + i.toString(36);
+                    feld.addEventListener('click', Brett.Feld.clickListener);
+                    brett.appendChild(feld);
+                }
+            }
+        }
+        {
+            for (var dez = 0; dez < 36; dez++) {
+                this.felder[dez] = new Brett.Feld(dez.toString(36));
+            }
+        }
+        return this.applyStellung(start || new Stellung("012345.uvwxyz"));
     };
     /**Wendet eine `Stellung` an, ohne diese zu überprüfen. */
     Brett.applyStellung = function (stellung) {
@@ -243,6 +204,7 @@ var Player = /** @class */ (function () {
     Player.O = new Player();
     return Player;
 }());
+Brett.init();
 // class FeldBAK {
 //     /**Construct a `Feld`-object with `dez`, `x`, `y`, `alnum` properties. */
 //     constructor (dez: number);

@@ -3,49 +3,6 @@ let $g: typeof document.querySelector = document.querySelector.bind(document),
     $c: typeof document.createElement = document.createElement.bind(document);
 ;
 
-function validateZug (start: number, ziel: number): boolean {
-    console.log("Zug von " + start + " zu " + ziel + " wird zugelassen.");
-    return true;
-}
-
-let brett = $g("#brett");
-if (! brett) throw new Error ("Missing #brett.")
-
-let felder = $a(".feld");
-
-felder.forEach(feld => {
-    feld.addEventListener('click', event => {
-        let _this = (event.currentTarget as HTMLElement),
-            s = $g(".feld_s");
-        if (_this.classList.contains("feld_s")) return _this.classList.remove("feld_s");
-        if (s) {
-            if (
-                validateZug(
-                    Number(s.id.replace(/\D/g, "")),
-                    Number(_this.id.replace(/\D/g, ""))
-                )
-            ) {
-                if (s.classList.contains("feld_o")) {
-                    _this.classList.add("feld_o");
-                    _this.classList.remove("feld_x");
-                    s.classList.remove("feld_o");
-                }
-                else {
-                    _this.classList.add("feld_x");
-                    _this.classList.remove("feld_o");
-                    s.classList.remove("feld_x");
-                }
-                s.classList.remove("feld_s");
-            }
-            else console.warn("Ungültiger Zug – Ignoriere.");
-        } else {
-            if (_this.classList.contains("feld_x") || _this.classList.contains("feld_o")) _this.classList.add("feld_s");
-            else console.warn("Felder ohne Figuren können nicht ausgewählt werden.")
-        }
-    });
-});
-
-
 interface Feld {
     dez: number;
     x: 1 | 2 | 3 | 4 | 5 | 0;
@@ -100,7 +57,7 @@ class Brett {
             i.className = "indexer indexer_X";
             i.id = "ix_" + x;
             brett.appendChild(i);
-        }
+        }}
         {for (let y = 0; y < 6; y ++) {
             let bf = [0, 2, 4, 7, 9, 11, 12, 14, 16, 19, 21, 23, 24, 26, 28, 31, 33, 35],
                 i = 0,
@@ -255,6 +212,9 @@ class Player {
     static X = new Player();
     static O = new Player();
 }
+
+
+Brett.init();
 
 
 // class FeldBAK {
