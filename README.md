@@ -6,6 +6,6 @@ Hier zu finden ist alle unsere Software zu HexAgrar. Das beinhaltet die Spielobe
 
 Das Projekt konnte anfangs über [htmlpreview.github.com]() aufgerufen werden, ist inzwischen jedoch über GitHub Pages auffindbar:
 
-[https://willem-schlieter.github.io/HexAgrar/]()
+[https://willem-schlieter.github.io/HexAgrar/](https://willem-schlieter.github.io/HexAgrar/)
 
 Das Projekt wird mit VSCode und TypeScript v3.9.7 entwickelt. Bei signifikanten Änderungen wird die GitHub Repository upgedated.
