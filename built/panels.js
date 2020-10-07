@@ -2,7 +2,9 @@
 var _a, _b;
 var Panels = {
     values: {
-        validate: true
+        validate: true,
+        indicateAmZug: true,
+        back: null
     },
     addChangeListener: function (listener) {
         this.changeListeners.push(listener);
@@ -14,7 +16,7 @@ var Panels = {
     },
     changeListeners: [],
     default: function () {
-        document.getElementById("lp-valid").checked = true;
+        document.getElementById("lp-validate").checked = true;
         document.getElementById("lp-indicateAmZug").checked = true;
     }
 };

@@ -1,12 +1,14 @@
 interface panelChangeEvent {
-    property: "validate",
+    property: "validate" | "indicateAmZug" | "back",
     value: any
 }
 type changeListener = (event: panelChangeEvent) => void;
 
 let Panels = {
     values: {
-        validate: true
+        validate: true,
+        indicateAmZug: true,
+        back: null
     },
     addChangeListener (listener: changeListener) {
         this.changeListeners.push(listener);
@@ -17,7 +19,7 @@ let Panels = {
     },
     changeListeners: [] as changeListener[],
     default () {
-        (document.getElementById("lp-valid") as HTMLInputElement).checked = true;
+        (document.getElementById("lp-validate") as HTMLInputElement).checked = true;
         (document.getElementById("lp-indicateAmZug") as HTMLInputElement).checked = true;
     }
 }

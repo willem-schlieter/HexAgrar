@@ -21,8 +21,21 @@ class Player {
 }
 
 Brett.init();
-Brett.applyStellung(new Stellung("012345.uvwxyz"));
+Brett.stellung = new Stellung("012345.uvwxyz");
 
+
+document.getElementById("lp-back")!.onclick = function() {
+    if (Hist.length < 2) console.log("Rückgängig: Bin schon ganz am Anfang.")
+    else {
+        console.log("Rückgängig.")
+        Hist.shift();
+        Brett.stellung = Hist.shift()!;
+        Brett.amZug = Player.toggle(Brett.amZug);
+    }
+}
+window.addEventListener("keypress", event => {
+    if (event.key === "z") document.getElementById("lp-back")?.click();
+});
 
 
 // Panels.addChangeListener((event) => {

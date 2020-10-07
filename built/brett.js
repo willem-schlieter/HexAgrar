@@ -2,6 +2,28 @@
 var Brett = /** @class */ (function () {
     function Brett() {
     }
+    Object.defineProperty(Brett, "stellung", {
+        /**Die aktuelle `Stellung`. Der Getter wendet die `Stellung` an, ohne diese zu überprüfen! */
+        get: function () {
+            return Brett._stellung;
+        },
+        set: function (s) {
+            console.log("Setze Stellung: " + s.code);
+            for (var _i = 0, _a = Brett.felder; _i < _a.length; _i++) {
+                var f = _a[_i];
+                if (s.x.includes(f.alnum))
+                    f.fig = Player.X;
+                else if (s.o.includes(f.alnum))
+                    f.fig = Player.O;
+                else
+                    f.fig = null;
+            }
+            Brett._stellung = s;
+            Hist.unshift(s);
+        },
+        enumerable: false,
+        configurable: true
+    });
     Object.defineProperty(Brett, "indicateAmZug", {
         get: function () {
             return this._indicateAmZug;
@@ -55,8 +77,8 @@ var Brett = /** @class */ (function () {
             default: throw new Error("Invalid format!");
         }
     };
-    /**Erstellt 36 `Feld`er und 6 `Y-Indexer` im `Brett`, speichert die `Feld`er in `Brett.felder`.
-     * Wendet dann die übergeben Start-`Stellung` an und gibt diese zurück.
+    /**Erstellt 36 `Feld`er und 12 `Indexer` im `Brett`, speichert die `Feld`er in `Brett.felder`.
+     * Wendet dann ggf die übergeben Start-`Stellung` (ohne Überprüfung) an und gibt diese zurück.
      * @param start Die Start-`Stellung`. Wenn nicht angegeben, bleibt das Brett leer.
      */
     Brett.init = function (start) {
@@ -104,20 +126,7 @@ var Brett = /** @class */ (function () {
                 Brett.felder[dez] = new Brett.Feld(dez.toString(36));
             }
         }
-        return (start) ? Brett.applyStellung(start) : null;
-    };
-    /**Wendet eine `Stellung` an, ohne diese zu überprüfen. */
-    Brett.applyStellung = function (stellung) {
-        for (var _i = 0, _a = this.felder; _i < _a.length; _i++) {
-            var f = _a[_i];
-            if (stellung.x.includes(f.alnum))
-                f.fig = Player.X;
-            else if (stellung.o.includes(f.alnum))
-                f.fig = Player.O;
-            else
-                f.fig = null;
-        }
-        return this.current = stellung;
+        return (start) ? Brett.stellung = start : null;
     };
     /**Wendet einen `Zug` ggf. nach Überprüfung auf die aktuelle `Stellung` an.
      * @returns Ob der Zug ausgeführt wurde. */
@@ -126,12 +135,12 @@ var Brett = /** @class */ (function () {
         // "re-select" dient als quasi-Befehl an Brett.Feld.clickListener().
         if (Panels.values.validate && zug.from.fig === zug.to.fig)
             return "re-select";
+        // Ist der Zug ungültig.
         if (Panels.values.validate && !Stellung.Zug.validate(zug, player))
             return "invalid";
+        // Sonst Zug ausführen
+        Brett.stellung = new Stellung(Brett.stellung.code.replace(zug.from.alnum, zug.to.alnum));
         Brett.amZug = Player.toggle(Brett.amZug);
-        Brett.current = new Stellung(Brett.current.code.replace(zug.from.alnum, zug.to.alnum));
-        Brett.feld(zug.to.alnum).fig = Brett.feld(zug.from.alnum).fig;
-        Brett.feld(zug.from.alnum).fig = null;
         return "done";
     };
     Brett.canSelect = function (feld) {
@@ -143,7 +152,6 @@ var Brett = /** @class */ (function () {
     };
     /*private*/ Brett.brett = document.getElementById("brett");
     /*private???*/ Brett.felder = [];
-    /*private?*/ Brett.enPassant = false;
     Brett.Feld = /** @class */ (function () {
         function Feld(alnum, player) {
             this._fig = null;

@@ -10,8 +10,23 @@ interface Feld {
 class Brett {
     /*private*/ static brett = document.getElementById("brett") as HTMLElement | null;
     /*private???*/ static felder: Feld[] = [];
-    /*private*/ static current: Stellung;
-    /*private?*/ static enPassant: boolean = false;
+
+    private static _stellung: Stellung;
+    /**Die aktuelle `Stellung`. Der Getter wendet die `Stellung` an, ohne diese zu überprüfen! */
+    static get stellung (): Stellung {
+        return Brett._stellung;
+    }
+    static set stellung (s: Stellung) {
+        console.log("Setze Stellung: " + s.code);
+        for (let f of Brett.felder) {
+            if (s.x.includes(f.alnum)) f.fig = Player.X;
+            else if (s.o.includes(f.alnum)) f.fig = Player.O;
+            else f.fig = null;
+        }
+        Brett._stellung = s;
+        Hist.unshift(s);
+    }
+
     private static _indicateAmZug: boolean;
     static get indicateAmZug (): boolean {
         return this._indicateAmZug;
@@ -62,8 +77,8 @@ class Brett {
         }
     }
 
-    /**Erstellt 36 `Feld`er und 6 `Y-Indexer` im `Brett`, speichert die `Feld`er in `Brett.felder`.
-     * Wendet dann die übergeben Start-`Stellung` an und gibt diese zurück.
+    /**Erstellt 36 `Feld`er und 12 `Indexer` im `Brett`, speichert die `Feld`er in `Brett.felder`.
+     * Wendet dann ggf die übergeben Start-`Stellung` (ohne Überprüfung) an und gibt diese zurück.
      * @param start Die Start-`Stellung`. Wenn nicht angegeben, bleibt das Brett leer.
      */
     static init (start?: Stellung): Stellung | null {
@@ -111,37 +126,28 @@ class Brett {
             Brett.felder[dez] = new Brett.Feld(dez.toString(36));
         }}
 
-        return (start) ? Brett.applyStellung(start) : null;
+        return (start) ? Brett.stellung = start : null;
     }
-    /**Wendet eine `Stellung` an, ohne diese zu überprüfen. */
-    static applyStellung (stellung: Stellung): Stellung {
-        for (let f of this.felder) {
-            if (stellung.x.includes(f.alnum)) f.fig = Player.X;
-            else if (stellung.o.includes(f.alnum)) f.fig = Player.O;
-            else f.fig = null;
-        }
-        return this.current = stellung;
-    }
+
     /**Wendet einen `Zug` ggf. nach Überprüfung auf die aktuelle `Stellung` an.
      * @returns Ob der Zug ausgeführt wurde. */
     static applyZug (zug: Zug, player: Player): "done" | "re-select" | "invalid" {
-        
         // Wenn ein Feld mit der gleichen Figur angeklickt wird, soll dieses ausgewählt werden.
         // "re-select" dient als quasi-Befehl an Brett.Feld.clickListener().
         if (Panels.values.validate && zug.from.fig === zug.to.fig) return "re-select";
-
+        // Ist der Zug ungültig.
         if (Panels.values.validate && ! Stellung.Zug.validate(zug, player)) return "invalid";
-
+        // Sonst Zug ausführen
+        Brett.stellung = new Stellung(Brett.stellung.code.replace(zug.from.alnum, zug.to.alnum));
         Brett.amZug = Player.toggle(Brett.amZug);
-        Brett.current = new Stellung(Brett.current.code.replace(zug.from.alnum, zug.to.alnum));
-        Brett.feld(zug.to.alnum).fig = Brett.feld(zug.from.alnum).fig;
-        Brett.feld(zug.from.alnum).fig = null;
         return "done";
     }
+
     static canSelect (feld: Feld): boolean {
         if (Panels.values.validate && feld.fig !== Brett.amZug) return false;
         else return Boolean(feld.domElement?.classList.contains("feld_x") || feld.domElement?.classList.contains("feld_o"));
     }
+
     static Feld = class Feld implements Feld {
         constructor (alnum: string, player?: Player | null) {
             this.dez = Number.parseInt(alnum, 36);

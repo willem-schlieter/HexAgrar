@@ -37,7 +37,7 @@ var Stellung = /** @class */ (function () {
                 var deltaX = Math.abs(zug.to.x - zug.from.x), deltaY = (zug.to.y - zug.from.y) * ((player.o) ? -1 : 1);
                 // 1 Schritt
                 if (deltaX === 0 && deltaY === 1 && zug.to.fig === null) {
-                    console.log("Ein Schritt.");
+                    console.log("Zug: Ein Schritt.");
                     return true;
                 }
                 // 2 Schritt
@@ -46,22 +46,22 @@ var Stellung = /** @class */ (function () {
                     Brett.feld((zug.to.dez + zug.from.dez) / 2).fig === null) {
                     if ((player.x && zug.from.dez < 6) ||
                         (player.o && zug.from.dez > 29)) {
-                        console.log("Zwei Schritt.");
+                        console.log("Zug: Zwei Schritt.");
                         return true;
                     }
                     else {
-                        console.log("Ungültig weil nicht in Initialstellung.");
+                        console.log("Zug: Zwei Schritt – Ungültig weil nicht in Initialstellung.");
                     }
                 }
                 // Schlag
                 else if (deltaX === 1 && deltaY === 1 &&
                     zug.to.fig === Player.toggle(player)) {
-                    console.log("Schlag.");
+                    console.log("Zug: Schlag.");
                     return true;
                 }
                 // Ungültig
                 else {
-                    console.log("Ungültig.");
+                    console.log("Zug ungültig.");
                     return false;
                 }
             };
