@@ -1,0 +1,16 @@
+@import "brett.css";
+@import "panels.css";
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #fdf7e5;
+    padding: 0;
+    margin: 0;
+    overflow: scroll;
+    min-width: 1200px;
+}
+
+

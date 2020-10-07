@@ -1,0 +1,12 @@
+.panel {
+    height: 100%;
+    /* border: 3px solid green; */
+    float: left;
+}
+#panel-l, #panel-r {
+    width: calc(50% - 300px);
+    padding: 10px;
+}
+#panel-m {
+    width: 600px;
+}
