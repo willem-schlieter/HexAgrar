@@ -138,7 +138,7 @@ class Brett {
         // Ist der Zug ungültig.
         if (Panels.values.validate && ! Stellung.Zug.validate(zug, player)) return "invalid";
         // Sonst Zug ausführen
-        Brett.stellung = new Stellung(Brett.stellung.code.replace(zug.from.alnum, zug.to.alnum));
+        Brett.stellung = new Stellung(Brett.stellung.code.replace(zug.to.alnum, "").replace(zug.from.alnum, zug.to.alnum));
         Brett.amZug = Player.toggle(Brett.amZug);
         return "done";
     }
