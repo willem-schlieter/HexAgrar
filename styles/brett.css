@@ -4,8 +4,10 @@
     margin: auto;
     border: 3px solid #222;
 }
-.brett_amZug_x .feld_o, .brett_amZug_o .feld_x {
-    filter: contrast(50%);
+
+.brett_amZug_x .feld_x:not(.feld_s), .brett_amZug_o .feld_o:not(.feld_s) {
+    border-color: #4040f1cc;
+    border-width: 2px;
 }
 
 .feld {
@@ -18,6 +20,7 @@
     background-position: left top;
     background-size: 100%;
     font-size: 10px;
+    transition: 0.1s;
 }
 .indexer {
     float: left;
@@ -51,6 +54,5 @@
     background-image: url("../Resources/x.png");
 }
 .feld_s {
-    border-color: #4040f1cc;
-    border-width: 4px;
+    border: 2px #4040f1cc dashed;
 }
