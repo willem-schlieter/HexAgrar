@@ -10,14 +10,16 @@
 <body>
     <div id="panel-l" class="panel">
 
-        <button id="lp-back">Rückgängig</button><br>
+        <button id="lp-redo">Rückgängig</button><br><br>
 
-        <label><input type="checkbox" checked id="lp-validate"> Züge überprüfen</label><br>
-        <label><input type="checkbox" checked id="lp-indicateAmZug"> Anzeigen, wer am Zug ist</label>
+        <label><input type="checkbox" checked id="lp-validate"> Züge überprüfen</label><br><br>
+
+        <label><input type="checkbox" checked id="lp-indicateAmZug"> Anzeigen, wer am Zug ist</label><br>
+        <label><input type="checkbox" checked id="lp-indicateZiele"> Mögliche Züge anzeigen</label>
 
     </div>
     <div id="panel-m" class="panel">
-        <div id="brett"></div>
+        <div id="brett" class="brett_indicateAmZug brett_indicateZiele"></div>
     </div>
     <div id="panel-r" class="panel">
 
@@ -30,6 +32,7 @@
     <script src="built/stellung.js"></script>
     <script src="built/panels.js"></script>
     <script src="built/hist.js"></script>
+    <script src="built/player.js"></script>
     <script src="built/main.js"></script>
 </body>
 </html>

@@ -5,11 +5,14 @@ interface Feld {
     alnum: string;
     domElement: HTMLElement | null;
     fig: Player | null;
+    select (): void;
+    unselect (): void;
 }
 
 class Brett {
-    /*private*/ static brett = document.getElementById("brett") as HTMLElement | null;
+    /*private*/ static readonly brett = document.getElementById("brett") as HTMLElement | null;
     /*private???*/ static felder: Feld[] = [];
+    static selected: Feld | null = null;
 
     private static _stellung: Stellung;
     /**Die aktuelle `Stellung`. Der Getter wendet die `Stellung` an, ohne diese zu überprüfen! */
@@ -25,20 +28,10 @@ class Brett {
         }
         Brett._stellung = s;
         Hist.unshift(s);
-    }
-
-    private static _indicateAmZug: boolean;
-    static get indicateAmZug (): boolean {
-        return this._indicateAmZug;
-    }
-    static set indicateAmZug (a: boolean) {
-        Brett._indicateAmZug = a;
-        if (a) {
-            Brett.brett?.classList.remove("brett_amZug_" + Player.toggle(Brett.amZug).code);
-            Brett.brett?.classList.add("brett_amZug_" + Brett.amZug.code);
-        } else {
-            Brett.brett?.classList.remove("brett_amZug_x");
-            Brett.brett?.classList.remove("brett_amZug_o");
+        let result = Stellung.isFinal(s, Brett.amZug);
+        if (result) {
+            console.log("Spiel beendet mit Exit-Code " + result.code.toUpperCase());
+            Brett.ende(result);
         }
     }
 
@@ -47,31 +40,29 @@ class Brett {
         return Brett._amZug;
     }
     static set amZug (a: Player) {
-        if (Brett.indicateAmZug) {
-            Brett.brett?.classList.remove("brett_amZug_" + Player.toggle(a).code);
-            Brett.brett?.classList.add("brett_amZug_" + a.code);
-        }
+        Brett.brett?.classList.remove("brett_amZug_" + Player.toggle(a).code);
+        Brett.brett?.classList.add("brett_amZug_" + a.code);
         Brett._amZug = a;
     }
 
-    /**Die Methode nimmt als Parameter einen alphanumerischen Index,
+    /**Nimmt als Parameter einen alphanumerischen Index,
      * einen dezimalen Index, oder xy-Koordinaten eines Feldes entgegen
      * und gibt dieses `Feld` zurück. */
     static feld (dez: number): Feld;
-    static feld (x: 1 | 2 | 3 | 4 | 5 | 0, y: 1 | 2 | 3 | 4 | 5 | 0): Feld;
+    static feld (x: number, y: number): Feld;
     static feld (alnum: string): Feld;
-    static feld (p1: number | string | 1 | 2 | 3 | 4 | 5 | 0, p2?: 1 | 2 | 3 | 4 | 5 | 0): Feld {
+    static feld (p1: number | string, p2?: number): Feld {
         switch (typeof p1 + typeof p2) {
             //coords
             case "number" + "number": {
-                if (Number.isNaN(p1) || Number.isNaN(p2) || ! Number.isInteger(p1) || ! Number.isInteger(p2) || p1 > 5 || p1 < 0 || p2! > 5 || p2! < 0) throw new Error("Invalid coordinates.");
-                return this.felder[(6 * p2!) + (p1 as number)]
+                if (Number.isNaN(p1) || Number.isNaN(p2) || ! Number.isInteger(p1) || ! Number.isInteger(p2) || p1 > 5 || p1 < 0 || p2! > 5 || p2! < 0) throw new Error("Invalid coordinates: " + p1 + "|" + p2);
+                return Brett.felder[(6 * p2!) + (p1 as number)]
             }
             case "number" + "undefined":
             case "string" + "undefined": {
                 let dez = (typeof p1 === "number") ? p1 as number : Number.parseInt(p1 as string, 36);
                 if (Number.isNaN(dez) || dez > 35 || dez < 0) throw new Error("Invalid field index.");
-                else return this.felder[dez];
+                else return Brett.felder[dez];
             }
             default: throw new Error("Invalid format!");
         }
@@ -86,7 +77,6 @@ class Brett {
         let brett = Brett.brett!;
 
         Brett.amZug = Player.X;
-        Brett.indicateAmZug = true;
         Panels.default();
 
         /**pseudoIndexer, indexer, feld */
@@ -132,23 +122,71 @@ class Brett {
     /**Wendet einen `Zug` ggf. nach Überprüfung auf die aktuelle `Stellung` an.
      * @returns Ob der Zug ausgeführt wurde. */
     static applyZug (zug: Zug, player: Player): "done" | "re-select" | "invalid" {
+
         // Wenn ein Feld mit der gleichen Figur angeklickt wird, soll dieses ausgewählt werden.
         // "re-select" dient als quasi-Befehl an Brett.Feld.clickListener().
         if (Panels.values.validate && zug.from.fig === zug.to.fig) return "re-select";
-        // Ist der Zug ungültig.
+
+        // Ist der Zug ungültig?
         if (Panels.values.validate && ! Stellung.Zug.validate(zug, player)) return "invalid";
+
         // Sonst Zug ausführen
-        Brett.stellung = new Stellung(Brett.stellung.code.replace(zug.to.alnum, "").replace(zug.from.alnum, zug.to.alnum));
         Brett.amZug = Player.toggle(Brett.amZug);
+        Brett.stellung = new Stellung(Brett.stellung.code.replace(zug.to.alnum, "").replace(zug.from.alnum, zug.to.alnum));
         return "done";
     }
 
+    /**Macht den letzten `Zug` rückgängig und entfernt den Eintrag aus `Hist`. */
+    static redo () {
+        if (Hist.length < 2) console.log("Rückgängig: Bin schon ganz am Anfang.")
+        else {
+            console.log("Rückgängig.")
+            Hist.shift();
+            Brett.stellung = Hist.shift()!;
+            Brett.amZug = Player.toggle(Brett.amZug);
+        }
+    }
+
+    /**Gibt an, ob das übergebene Feld ausgewählt werden kann. */
     static canSelect (feld: Feld): boolean {
         if (Panels.values.validate && feld.fig !== Brett.amZug) return false;
         else return Boolean(feld.domElement?.classList.contains("feld_x") || feld.domElement?.classList.contains("feld_o"));
     }
 
+    static ende (exit: Player | Remis | Both) {
+        if (exit instanceof Player) alert("!!!!! HURRA !!!!!\n " + exit.code.toUpperCase() + " HAT GEWONNEN!\n!!!!! HURRA !!!!!");
+        else if (exit.code === "remis") alert("Tja, das ist wohl ein Remis geworden!");
+        else alert("Hier ist irgendwas komisch. Beide haben gewonnen? Naja, ist ja auch mal schön.");
+    }
+
     static Feld = class Feld implements Feld {
+        static clickListener(event: MouseEvent) {
+            let selected = document.getElementsByClassName("feld_s")[0],
+            sF = (selected) ? Brett.feld(selected.id[2]) : null,
+            _this = Brett.feld((event.currentTarget as HTMLElement).id[2]);
+
+            // un-select durch wiederholtes klicken
+            if (Brett.selected === _this) return Brett.selected.unselect();
+
+            if (sF) {
+                switch (Brett.applyZug(
+                    new Stellung.Zug(sF!.alnum, _this.alnum),
+                    sF!.fig!
+                )) {
+                    case "done":
+                        Brett.selected?.unselect();
+                        break;
+                    case "re-select":
+                        _this.select();
+                        break;
+                }
+            } else {
+                // wenn möglich: select
+                if (Brett.canSelect(_this)) _this.select();
+                else console.log("Could not select.");
+            }
+        }
+
         constructor (alnum: string, player?: Player | null) {
             this.dez = Number.parseInt(alnum, 36);
             if (Number.isNaN(this.dez) || ! Number.isInteger(this.dez) || this.dez > 35 || this.dez < 0) throw new Error("Invalid alphanumeric field index.");
@@ -160,6 +198,7 @@ class Brett {
 
             if (player) this.fig = player;
         }
+
         dez: number;
         x: 1 | 2 | 3 | 4 | 5 | 0;
         y: 1 | 2 | 3 | 4 | 5 | 0;
@@ -180,29 +219,23 @@ class Brett {
                 this.domElement?.classList.remove("feld_o");
             }
             this._fig = player;
-        }
-        static clickListener(event: MouseEvent) {
-            let _this = (event.currentTarget as HTMLElement),
-                s = $g(".feld_s");
-
-            // un-select durch wiederholtes klicken
-            if (_this.classList.contains("feld_s")) return _this.classList.remove("feld_s");
-
-            if (s) {
-                switch (Brett.applyZug(new Stellung.Zug(s.id[2], _this.id[2]), Brett.feld(s.id[2]).fig!)) {
-                    case "done":
-                        s.classList.remove("feld_s");
-                        break;
-                    case "re-select":
-                        s.classList.remove("feld_s");
-                        _this.classList.add("feld_s");
-                        break;
-                }
-            } else {
-                // wenn möglich: select
-                if (Brett.canSelect(Brett.feld(_this.id[2]))) _this.classList.add("feld_s");
-                else console.log("Could not select.");
-            }
+        };
+        select () {
+            Brett.selected?.unselect();
+            this.domElement?.classList.add("feld_s");
+            Brett.selected = this;
+            // neue Ziele markieren
+            Brett.stellung.zieleVon(this.dez).forEach(dez => {
+                Brett.feld(dez).domElement?.classList.add("feld_z");
+            });
+        };
+        unselect () {
+            this.domElement?.classList.remove("feld_s");
+            Brett.selected = null;
+            // "clear" alte Ziele
+            document.querySelectorAll(".feld_z").forEach(f => {
+                f.classList.remove("feld_z");
+            });
         }
     }
 }

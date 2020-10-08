@@ -1,10 +1,11 @@
 "use strict";
-var _a, _b;
+var _a;
 var Panels = {
     values: {
         validate: true,
         indicateAmZug: true,
-        back: null
+        indicateZiele: true,
+        redo: null,
     },
     addChangeListener: function (listener) {
         this.changeListeners.push(listener);
@@ -18,15 +19,21 @@ var Panels = {
     default: function () {
         document.getElementById("lp-validate").checked = true;
         document.getElementById("lp-indicateAmZug").checked = true;
+        document.getElementById("lp-indicateZiele").checked = true;
+    },
+    emitChangeEvent: function (property, value) {
+        Panels.values[property] = value || null;
+        this.changeListeners.forEach(function (l) { return l({ property: property, value: value || null }); });
     }
 };
-(_a = document.getElementById("lp-valid")) === null || _a === void 0 ? void 0 : _a.addEventListener("change", function (event) {
-    var ev = {
-        property: "validate",
-        value: Panels.values.validate = event.currentTarget.checked
-    };
-    Panels.changeListeners.forEach(function (l) { return l(ev); });
+// Listeners for Checkboxes
+["validate", "indicateZiele", "indicateAmZug"].forEach(function (prop) {
+    var _a;
+    (_a = document.getElementById("lp-" + prop)) === null || _a === void 0 ? void 0 : _a.addEventListener("change", function (event) {
+        Panels.emitChangeEvent(prop, event.currentTarget.checked);
+    });
 });
-(_b = document.getElementById("lp-indicateAmZug")) === null || _b === void 0 ? void 0 : _b.addEventListener("change", function (event) {
-    Brett.indicateAmZug = event.currentTarget.checked;
+// Further Listeners
+(_a = document.getElementById("lp-redo")) === null || _a === void 0 ? void 0 : _a.addEventListener("click", function () {
+    Panels.emitChangeEvent("redo");
 });

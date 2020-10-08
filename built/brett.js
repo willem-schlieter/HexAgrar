@@ -20,24 +20,10 @@ var Brett = /** @class */ (function () {
             }
             Brett._stellung = s;
             Hist.unshift(s);
-        },
-        enumerable: false,
-        configurable: true
-    });
-    Object.defineProperty(Brett, "indicateAmZug", {
-        get: function () {
-            return this._indicateAmZug;
-        },
-        set: function (a) {
-            var _a, _b, _c, _d;
-            Brett._indicateAmZug = a;
-            if (a) {
-                (_a = Brett.brett) === null || _a === void 0 ? void 0 : _a.classList.remove("brett_amZug_" + Player.toggle(Brett.amZug).code);
-                (_b = Brett.brett) === null || _b === void 0 ? void 0 : _b.classList.add("brett_amZug_" + Brett.amZug.code);
-            }
-            else {
-                (_c = Brett.brett) === null || _c === void 0 ? void 0 : _c.classList.remove("brett_amZug_x");
-                (_d = Brett.brett) === null || _d === void 0 ? void 0 : _d.classList.remove("brett_amZug_o");
+            var result = Stellung.isFinal(s, Brett.amZug);
+            if (result) {
+                console.log("Spiel beendet mit Exit-Code " + result.code.toUpperCase());
+                Brett.ende(result);
             }
         },
         enumerable: false,
@@ -49,10 +35,8 @@ var Brett = /** @class */ (function () {
         },
         set: function (a) {
             var _a, _b;
-            if (Brett.indicateAmZug) {
-                (_a = Brett.brett) === null || _a === void 0 ? void 0 : _a.classList.remove("brett_amZug_" + Player.toggle(a).code);
-                (_b = Brett.brett) === null || _b === void 0 ? void 0 : _b.classList.add("brett_amZug_" + a.code);
-            }
+            (_a = Brett.brett) === null || _a === void 0 ? void 0 : _a.classList.remove("brett_amZug_" + Player.toggle(a).code);
+            (_b = Brett.brett) === null || _b === void 0 ? void 0 : _b.classList.add("brett_amZug_" + a.code);
             Brett._amZug = a;
         },
         enumerable: false,
@@ -63,8 +47,8 @@ var Brett = /** @class */ (function () {
             //coords
             case "number" + "number": {
                 if (Number.isNaN(p1) || Number.isNaN(p2) || !Number.isInteger(p1) || !Number.isInteger(p2) || p1 > 5 || p1 < 0 || p2 > 5 || p2 < 0)
-                    throw new Error("Invalid coordinates.");
-                return this.felder[(6 * p2) + p1];
+                    throw new Error("Invalid coordinates: " + p1 + "|" + p2);
+                return Brett.felder[(6 * p2) + p1];
             }
             case "number" + "undefined":
             case "string" + "undefined": {
@@ -72,7 +56,7 @@ var Brett = /** @class */ (function () {
                 if (Number.isNaN(dez) || dez > 35 || dez < 0)
                     throw new Error("Invalid field index.");
                 else
-                    return this.felder[dez];
+                    return Brett.felder[dez];
             }
             default: throw new Error("Invalid format!");
         }
@@ -86,7 +70,6 @@ var Brett = /** @class */ (function () {
             throw new Error("Brett could not be found.");
         var brett = Brett.brett;
         Brett.amZug = Player.X;
-        Brett.indicateAmZug = true;
         Panels.default();
         /**pseudoIndexer, indexer, feld */
         var pseudoIndexer = document.createElement("div");
@@ -135,14 +118,26 @@ var Brett = /** @class */ (function () {
         // "re-select" dient als quasi-Befehl an Brett.Feld.clickListener().
         if (Panels.values.validate && zug.from.fig === zug.to.fig)
             return "re-select";
-        // Ist der Zug ungültig.
+        // Ist der Zug ungültig?
         if (Panels.values.validate && !Stellung.Zug.validate(zug, player))
             return "invalid";
         // Sonst Zug ausführen
-        Brett.stellung = new Stellung(Brett.stellung.code.replace(zug.to.alnum, "").replace(zug.from.alnum, zug.to.alnum));
         Brett.amZug = Player.toggle(Brett.amZug);
+        Brett.stellung = new Stellung(Brett.stellung.code.replace(zug.to.alnum, "").replace(zug.from.alnum, zug.to.alnum));
         return "done";
     };
+    /**Macht den letzten `Zug` rückgängig und entfernt den Eintrag aus `Hist`. */
+    Brett.redo = function () {
+        if (Hist.length < 2)
+            console.log("Rückgängig: Bin schon ganz am Anfang.");
+        else {
+            console.log("Rückgängig.");
+            Hist.shift();
+            Brett.stellung = Hist.shift();
+            Brett.amZug = Player.toggle(Brett.amZug);
+        }
+    };
+    /**Gibt an, ob das übergebene Feld ausgewählt werden kann. */
     Brett.canSelect = function (feld) {
         var _a, _b;
         if (Panels.values.validate && feld.fig !== Brett.amZug)
@@ -150,8 +145,17 @@ var Brett = /** @class */ (function () {
         else
             return Boolean(((_a = feld.domElement) === null || _a === void 0 ? void 0 : _a.classList.contains("feld_x")) || ((_b = feld.domElement) === null || _b === void 0 ? void 0 : _b.classList.contains("feld_o")));
     };
+    Brett.ende = function (exit) {
+        if (exit instanceof Player)
+            alert("!!!!! HURRA !!!!!\n " + exit.code.toUpperCase() + " HAT GEWONNEN!\n!!!!! HURRA !!!!!");
+        else if (exit.code === "remis")
+            alert("Tja, das ist wohl ein Remis geworden!");
+        else
+            alert("Hier ist irgendwas komisch. Beide haben gewonnen? Naja, ist ja auch mal schön.");
+    };
     /*private*/ Brett.brett = document.getElementById("brett");
     /*private???*/ Brett.felder = [];
+    Brett.selected = null;
     Brett.Feld = /** @class */ (function () {
         function Feld(alnum, player) {
             this._fig = null;
@@ -165,6 +169,30 @@ var Brett = /** @class */ (function () {
             if (player)
                 this.fig = player;
         }
+        Feld.clickListener = function (event) {
+            var _a;
+            var selected = document.getElementsByClassName("feld_s")[0], sF = (selected) ? Brett.feld(selected.id[2]) : null, _this = Brett.feld(event.currentTarget.id[2]);
+            // un-select durch wiederholtes klicken
+            if (Brett.selected === _this)
+                return Brett.selected.unselect();
+            if (sF) {
+                switch (Brett.applyZug(new Stellung.Zug(sF.alnum, _this.alnum), sF.fig)) {
+                    case "done":
+                        (_a = Brett.selected) === null || _a === void 0 ? void 0 : _a.unselect();
+                        break;
+                    case "re-select":
+                        _this.select();
+                        break;
+                }
+            }
+            else {
+                // wenn möglich: select
+                if (Brett.canSelect(_this))
+                    _this.select();
+                else
+                    console.log("Could not select.");
+            }
+        };
         Object.defineProperty(Feld.prototype, "fig", {
             get: function () {
                 return this._fig;
@@ -187,29 +215,27 @@ var Brett = /** @class */ (function () {
             configurable: true
         });
         ;
-        Feld.clickListener = function (event) {
-            var _this = event.currentTarget, s = $g(".feld_s");
-            // un-select durch wiederholtes klicken
-            if (_this.classList.contains("feld_s"))
-                return _this.classList.remove("feld_s");
-            if (s) {
-                switch (Brett.applyZug(new Stellung.Zug(s.id[2], _this.id[2]), Brett.feld(s.id[2]).fig)) {
-                    case "done":
-                        s.classList.remove("feld_s");
-                        break;
-                    case "re-select":
-                        s.classList.remove("feld_s");
-                        _this.classList.add("feld_s");
-                        break;
-                }
-            }
-            else {
-                // wenn möglich: select
-                if (Brett.canSelect(Brett.feld(_this.id[2])))
-                    _this.classList.add("feld_s");
-                else
-                    console.log("Could not select.");
-            }
+        ;
+        Feld.prototype.select = function () {
+            var _a, _b;
+            (_a = Brett.selected) === null || _a === void 0 ? void 0 : _a.unselect();
+            (_b = this.domElement) === null || _b === void 0 ? void 0 : _b.classList.add("feld_s");
+            Brett.selected = this;
+            // neue Ziele markieren
+            Brett.stellung.zieleVon(this.dez).forEach(function (dez) {
+                var _a;
+                (_a = Brett.feld(dez).domElement) === null || _a === void 0 ? void 0 : _a.classList.add("feld_z");
+            });
+        };
+        ;
+        Feld.prototype.unselect = function () {
+            var _a;
+            (_a = this.domElement) === null || _a === void 0 ? void 0 : _a.classList.remove("feld_s");
+            Brett.selected = null;
+            // "clear" alte Ziele
+            document.querySelectorAll(".feld_z").forEach(function (f) {
+                f.classList.remove("feld_z");
+            });
         };
         return Feld;
     }());
