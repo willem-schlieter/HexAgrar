@@ -1,0 +1,6 @@
+.DS_Store
+node_modules
+Cargo.lock
+/rusty-hexagrar/target
+/wasm/target
+/wasm/tests
