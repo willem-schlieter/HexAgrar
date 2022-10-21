@@ -1,0 +1,41 @@
+#brett__ {
+    background-color: #ccc;
+    border-width: 5px;
+    border-radius: 8px;
+}
+.feld {
+    background: linear-gradient(45deg, #999, #aaa);
+
+    transition: 0.4s;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 15pt;
+    color: white;
+}
+.feldDark {
+    background-color: #aaa;
+    background: linear-gradient(45deg, #777, #888);
+}
+.feldX {
+    background: no-repeat center/0% url("../../img/xd.png"), #222;
+}
+.feldO {
+    background: no-repeat center/0% url("../../img/ol.png"), white;
+    color: black;
+}
+.feldAmZug.feldX {
+    background: no-repeat center/50% url("../../img/xd.png"), #222;
+    border-color: #777;
+}
+.feldAmZug.feldO {
+    background: no-repeat center/50% url("../../img/ol.png"), white;
+    border-color: #777;
+}
+
+.feldSelected {
+    border-style: solid;
+    border-radius: 30px;
+}
+.vorschlag {
+    border-radius: 30px;
+}

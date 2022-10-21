@@ -1,0 +1,25 @@
+–– RUSTY TOGRE ––
+
+    calc -v[1,2,3] [-w file] [stellung] [player_code] [-full]
+        Konstellation mit Version 1/2/3 berechnen. DB wird, sofern
+        angegeben, in file geschrieben. Bei Version 1 kann mit -full
+        der gesamte Spielbaum (ohne Short-Circuiting) berechnet werden
+        (dauert viel länger).
+
+    inspect [db_path] [stellung] [player_code]
+        Liest die TogreDB aus der angegebenen DB ein und gibt
+        (soweit vorhanden) die Einträge für die gegebene Konstellation
+        und alle direkten Folgestellungen aus.
+    
+    hk -v[1,2,3] [-w file] [stellung] [player_code] [compl]
+        Halbkreis mit gegebener Komplexität berechnen und speichern,
+        wenn angegeben.
+    
+    convert [stellung]
+        Stellungscode in Pos konvertieren (V1 wird verwendet).
+
+    info
+        Infos über die Versionen anzeigen.
+    
+    help
+        Diese Hilfe anzeigen.

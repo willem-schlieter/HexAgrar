@@ -1,0 +1,639 @@
+/*
+*/
+
+pub const INFO: &str = "Abwandlung 30.5. - zielfelder in togre inlined und dadurch weitere Short-Circuiting ermöglicht. Das hat die Performance ENORM GESTEIGERT! (12345.vwxyz/X von 19s auf 7,2s! (62%))";
+
+#[allow(non_snake_case)]
+pub mod H {
+    const FIELDS: [char; 36] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
+
+    #[derive(Debug, PartialEq, Eq, Hash, Clone)]
+    pub struct Pos (pub Vec<i8>, pub Vec<i8>);
+    impl Pos {
+        /// Kodiert eine Collection (`Vec<Pos>`) zu einem `String`, wobei die Stellungen durch ein `/` getrennt werden.
+        pub fn write_collection(collection: &Vec<Pos>) -> String {
+            collection.iter().map(|p| p.write()).collect::<Vec<String>>().join("/")
+        }
+        /// Dekodiert eine Collection aus einem kodierten `String` (Gegenstück zu `write_collection`).
+        pub fn collection_from(code: String) -> Vec<Pos> {
+            code.split("/").map(|c| Pos::from(c.to_string())).collect()
+        }
+        
+        /// Erstellt eine leere Stellung.
+        pub fn new() -> Pos { Pos(vec![], vec![]) }
+        /// Erstellt eine Stellung aus einem gegebenen Code.
+        pub fn from(code: String) -> Pos {
+            if code == "-" { return Pos::from("012345.uvwxyz".to_string()) }
+            let mut parts = code.split(".").collect::<Vec<&str>>();
+            while parts.len() < 2 { parts.push("") };
+            if parts.len() > 2 { panic!("Stellungscode {} ungültig.", code) }
+            let mut res = [vec![], vec![]];
+            for i in 0..2 {
+                for ch in parts[i].chars() {
+                    match FIELDS.into_iter().position(|e| e == ch) {
+                        Some(u) => {
+                            if res[i].len() == 0 || res[i][res[i].len() - 1] < u as i8 { res[i].push(u as i8) }
+                            else {
+                                for ix in 0..res[i].len() {
+                                    if res[i][ix] == u as i8 { break; }
+                                    else if res[i][ix] > u as i8 { res[i].insert(ix, u as i8); break; }
+                                }
+                            }
+                        },
+                        None => panic!("Stellungscode {} ungültig.", code)
+                    }
+                }
+            }
+            Pos(res[0].clone(), res[1].clone())
+        }
+        /// Gibt den Code der Stellung aus.
+        pub fn write(&self) -> String {
+            let mut r = String::new();
+            for f in self.0.iter() { r.push(FIELDS[*f as usize]); }
+            r.push('.');
+            for f in self.1.iter() { r.push(FIELDS[*f as usize]); }
+            r
+        }
+        /// Gibt eine & zum Vec<i8> des angegebenen Players zurück.
+        pub fn of(&self, player: &Player) -> &Vec<i8> {
+            match player {
+                Player::X => &(self.0),
+                Player::O => &(self.1)
+            }
+        }
+        /// Gibt eine &mut zum Vec<i8> des angegebenen Players zurück.
+        pub fn of_mut(&mut self, player: &Player) -> &mut Vec<i8> {
+            match player {
+                Player::X => &mut (self.0),
+                Player::O => &mut (self.1)
+            }
+        }
+        /// Gibt zurück, ob ein Spieler gewonnen hat, sonst None.
+        pub fn won(&self) -> Option<Player> {
+            for f in self.0.iter() { if self.row_for(*f, &Player::X) == 5 { return Some(Player::X) } }
+            for f in self.1.iter() { if self.row_for(*f, &Player::O) == 5 { return Some(Player::O) } }
+            None
+        }
+        /// Gibt an, in welcher Reihe das gegebene Feld für den gegebenen Player ist.
+        pub fn row_for(&self, feld: i8, player: &Player) -> i8 {
+            if *player == Player::X {
+                (feld - (feld % 6)) / 6
+            } else {
+                5 - (feld - (feld % 6)) / 6
+            }
+        }
+        /// Berechnet die Komplexität der Stellung, also die Anzahl der Figuren, die sich im Heimbereich befinden.
+        pub fn compl(&self) -> usize {
+            self.0.iter().filter(|feld| self.row_for(**feld, &Player::X) < 2).collect::<Vec<&i8>>().len() + self.1.iter().filter(|feld| self.row_for(**feld, &Player::O) < 2).collect::<Vec<&i8>>().len()
+            // let mut c: usize = 0;
+            // for f in &self.0 { if self.row_for(*f, &Player::X) < 2 { c += 1 } };
+            // for f in &self.1 { if self.row_for(*f, &Player::O) < 2 { c += 1 } };
+            // c
+        }
+        /// Ermittelt alle möglichen Zielfelder, die ein Spieler von einem Feld aus in dieser Pos erreichen kann.
+        pub fn zielfelder(&self, feld: i8, p: &Player) -> [Option<i8>; 4] {
+            // Steht der angegebene Spieler überhaupt auf dem Feld?
+            // Nur für dev, später uU löschen (wegen perf)
+            if ! self.of(&p).contains(&feld) { panic!("In der Pos {:?} steht der Player {:?} nicht auf dem Feld {:?}.", self, p, feld) }
+            else {
+                let mut res: [Option<i8>; 4] = [None, None, None, None];
+                // Nur weiter, wenn Figur nicht in der letzten Reihe.
+                if ! (p.b() && feld > 29) || (! p.b() && feld < 6) {
+                    // Zunächst die potenziellen Zielfelder bestimmen.
+                    let ziele = (
+                        // Schritt
+                        feld + (p.m() * 6),
+                        // Sprung
+                        feld + (p.m() * 12),
+                        // Nach rechts schlagen
+                        feld + (p.m() * 5),
+                        // Nach links schlagen
+                        feld + (p.m() * 7),
+                    );
+                    // Dann einzeln überprüfen, ob man darauf ziehen kann.
+                    // Wenn das Feld vor mir frei ist…
+                    if ! (self.0.contains(&ziele.0) || self.1.contains(&ziele.0)) {
+                        // …kann ich einen Schritt machen.
+                        res[0] = Some(ziele.0);
+                        // Wenn außerdem das Feld davor frei ist…
+                        if ! (self.0.contains(&ziele.1) || self.1.contains(&ziele.1)) &&
+                        // …und ich in der Initialreihe stehe…
+                        (feld < 6 || feld > 29) // (Wobei es hier kein Problem darstellt, dass theoretisch Initial- und Zielreihe (wegen mangelnder Fallunterscheidung nach Playern) nicht auseinandergehalten werden, weil Figuren in der Zielreihe oben bereits ausgeschlossen wurden.)
+                        // …dann kann ich auch springen.
+                        { res[1] = Some(ziele.1); }
+                    }
+                    // Wenn nun `feld` nicht am rechten Rand ist…
+                    if ((feld + ((p.m() - 1) / -2)) % 6) != 0 &&
+                    // …und schräg rechts davor der Gegner steht…
+                        self.of(&p.not()).contains(&ziele.2)
+                    // …dann kann man ihn dort schlagen.
+                    { res[2] = Some(ziele.2); }
+
+                    // Wenn andersherum `feld` nicht am linken Rand ist…
+                    if ((feld + ((p.m() + 1) / 2)) % 6) != 0 &&
+                    // …und schräg links davor der Gegner steht…
+                        self.of(&p.not()).contains(&ziele.3)
+                    // … dann kann man ihn dort schlagen.
+                    { res[3] = Some(ziele.3); }
+                }
+                res
+            }
+        }
+        /// Wendet einen Zug auf self an und gibt die resultierende Stellung zurück.
+        pub fn zug_anwenden(&self, zug: Zug, p: &Player) -> Pos {
+            let mut n = Pos(self.0.clone(), self.1.clone());
+            // zug.from entfernen
+            match n.of(&p).iter().position(|f| *f == zug.from) {
+                Some(i) => n.of_mut(&p).remove(i),
+                None => panic!("Spieler {:?} steht in Pos {:?} nicht auf Feld {:?}.", p, self, zug.from)
+            };
+            // zug.to bei Ziehenden hinzufügen
+            {
+                let m = n.of_mut(&p);
+                if m.len() == 0 || m[m.len() - 1] < zug.to { m.push(zug.to) }
+                else {
+                    for i in 0..m.len() {
+                        if m[i] == zug.to { break; }
+                        else if m[i] > zug.to { m.insert(i, zug.to); break; }
+                    }
+                }
+            }
+            // zug.to bei Anderem entfernen
+            if let Some(i) = n.of(&p.not()).iter().position(|f| *f == zug.to) {
+                n.of_mut(&p.not()).remove(i);
+            };
+            n
+        }
+        /// Gibt einen Vector mit allen möglichen Folgestellungen zurück.
+        pub fn folgestellungen(&self, p: &Player) -> Vec<Pos> {
+            let mut res: Vec<Pos> = vec![];
+            for startfeld in self.of(p) {
+                for zielfeld_op in self.zielfelder(*startfeld, p) {
+                    if let Some(zielfeld) = zielfeld_op {
+                        res.push(self.zug_anwenden(Zug {from: *startfeld, to: zielfeld}, p));
+                    }
+                }
+            };
+            res
+        }
+    }
+
+    pub struct Zug { pub from: i8, pub to: i8 }
+
+    #[derive(PartialEq, Debug, Copy, Clone)]
+    pub enum Player { X, O }
+    impl Player {
+        pub fn not(&self) -> Player {
+            match self {
+                Player::X => Player::O,
+                Player::O => Player::X
+            }
+        }
+        pub fn togre(&self) -> Togre {
+            match self {
+                Player::X => Togre::X,
+                Player::O => Togre::O
+            }
+        }
+        pub fn m(&self) -> i8 {
+            match self {
+                Player::X => 1,
+                Player::O => -1
+            }
+        }
+        pub fn c(&self) -> char {
+            match self {
+                Player::X => 'x',
+                Player::O => 'O'
+            }
+        }
+        pub fn b(&self) -> bool {
+            self == &Player::X
+        }
+    }
+
+    #[derive(PartialEq, Debug, Copy, Clone)]
+    pub enum Togre { X, O, R }
+}
+
+#[allow(non_snake_case)]
+pub mod T {
+    extern crate termion;
+    use termion::{color, style};
+    use std::{collections::HashMap, time::Instant};
+    use super::H;
+    use H::{ Togre, Pos, Player, Zug };
+
+    pub struct DB {
+        x: HashMap<H::Pos, H::Togre>,
+        o: HashMap<H::Pos, H::Togre>,
+        times: (i64, i64, i64) // i, get, set
+    }
+    impl DB {
+        /// Erstellt eine neue, leere `DB`.
+        pub fn new() -> DB { DB { x: HashMap::new(), o: HashMap::new(), times: (0, 0, 0) } }
+        /// Dekodiert eine `DB` aus einem kodierten `String` (Gegenstück zu `write`).
+        pub fn from(code: String) -> DB {
+            let mut db = DB::new();
+            let parts = code.split("%%").collect::<Vec<&str>>()[1].to_string().split("#").map(|s| s.to_string()).collect::<Vec<String>>().iter().map(|part| part.split("/").map(|c| Pos::from(c.to_string())).collect::<Vec<Pos>>()).collect::<Vec<Vec<Pos>>>();
+            // x_x
+            for pos in &parts[0] { db.x.insert(pos.clone(), Togre::X); }
+            // x_o
+            for pos in &parts[1] { db.x.insert(pos.clone(), Togre::O); }
+            // x_r
+            for pos in &parts[2] { db.x.insert(pos.clone(), Togre::R); }
+            // o_x
+            for pos in &parts[3] { db.o.insert(pos.clone(), Togre::X); }
+            // o_o
+            for pos in &parts[4] { db.o.insert(pos.clone(), Togre::O); }
+            // o_r
+            for pos in &parts[5] { db.o.insert(pos.clone(), Togre::R); }
+            db
+        }
+        /// Gibt die Gesamtzahl aller Einträge aus.
+        pub fn len(&self) -> usize {
+            self.x.len() + self.o.len()
+        }
+        /// Gibt eine `Some(Togre)` zurück, wenn `pos`/`p` in der `DB` enthalten sind, sonst `None`.
+        pub fn get(&mut self, pos: &H::Pos, p: &H::Player) -> Option<H::Togre> {
+            self.times.1 += 1;
+            match (if *p == H::Player::X { &self.x } else { &self.o }).get(&pos) {
+                Some(t) => Some(*t),
+                None => None
+            }
+        }
+        /// Setzt `pos`/`p` auf Togre `t`.
+        pub fn set(&mut self, pos: H::Pos, p: &H::Player, t: &H::Togre) {
+            self.times.2 += 1;
+            (if *p == H::Player::X { &mut self.x } else { &mut self.o }).insert(pos, *t);
+        }
+        /// Berechnet die `Togre`-Zahl für `pos_code`/`player_code` und gibt ein `CalcResult` zurück.
+        pub fn calc(&mut self, pos_code: String, player_code: &str) -> CalcResult {
+            self.calc_converted(&Pos::from(pos_code), match player_code {
+                "X" | "x" => H::Player::X,
+                "O" | "o" => H::Player::O,
+                _ => panic!("Invalid player code: {}", player_code)
+            })
+        }
+        /// Wie calc, aber mit anderer Signatur…
+        pub fn calc_converted(&mut self, pos: &Pos, p: Player) -> CalcResult {
+            let old_len = self.len();
+            let before = Instant::now();
+            let t = match pos.won() {
+                Some(p) => p.togre(),
+                None => {
+                    match self.get(&pos, &p) {
+                        Some(t) => t,
+                        None => {
+                            self.i(pos, &p)
+                        }
+                    }
+                }
+            };
+            CalcResult {
+                pos: pos.write(),
+                p: p.c(),
+                t,
+                entries: self.len() - old_len,
+                times: self.times,
+                duration: Instant::now().duration_since(before).as_millis()
+            }
+        }
+        // Gibt Some(Togre) zurück, wenn die gegebene Stellung bereits bekannt oder gewonnen ist. Sonst
+        fn get_known_togre(&mut self, pos: &Pos, p: &Player) -> Option<Togre> {
+            // Ist pos in der DB?
+            match self.get(&pos, &p) {
+                // Wenn ja, ist das das Ergebnis.
+                Some(saved) => Some(saved),
+                // Wenn nein…
+                None => {
+                    // Ist pos gewonnen?
+                    match pos.won() {
+                        // Wenn ja, ist das das Ergebnis.
+                        Some(won) => Some(won.togre()),
+                        // Sonst ist pos noch unbekannt.
+                        None => None
+                    }
+                }
+            }
+        }
+        
+        /// ***Nur für internen Gebrauch:*** Rekursive Kernfunktion zur Togre-Berechnung.
+        fn i(&mut self, pos: &Pos, p: &Player) -> Togre {
+            self.times.0 += 1;
+            // pos ist garantiert nicht gewonnen und nicht in der DB. (Denn bei rekursivem Aufruf wurde dies schon vorher geprüft, s.u., und der manuelle Aufruf sollte über calc erfolgen, wo dies auch geschieht, s.o.)
+            // Aber Achtung: calc prüft nicht, ob pos remis ist. Auch vor dem rekursiven Aufruf wird nicht geprüft, ob die Folgestellung, die jetzt berechnet wird, remis ist. Dieser Fall muss behandelt werden!
+            
+            // Ist pos neutral?
+            let mut neutral = false; // Wir gehen erstmal nicht davon aus. Wird sich dann unten zeigen…
+            // Stellungen, die noch unbekannt sind und später berechnet werden sollen.
+            let mut later: Vec<Pos> = vec![];
+            // Mögliche Startfelder
+            let startfelder = pos.of(p);
+            // Wenn es keine gibt, wissen wir jetzt schon, dass pos remis ist, und brechen ab.
+            if startfelder.len() == 0 { return Togre::R; };
+
+            // Wir iterieren zunächst über die Startfelder:
+            for f in startfelder {
+                // Nur DEBUG
+                if pos.row_for(*f, p) == 5 { panic!("Feld {:?} ist in der Zielreihe des Players {}.", f, p.c()); }
+
+                // Und schauen uns die einzelnen Zugoptionen an.
+
+                // Ich könnte einen Schritt machen…
+                let ziel_schritt = f + (p.m() * 6);
+                // …wenn vor dem Startfeld niemand steht:
+                if ! (pos.of(&Player::X).contains(&ziel_schritt) || pos.of(&Player::O).contains(&ziel_schritt)) {
+                    // Dann wenden wir das an und erhalten die neue Stellung.
+                    let newpos_schritt = pos.zug_anwenden(Zug { from: *f, to: ziel_schritt}, p);
+                    // Diese fragen wir zunächst in der DB und nach Finalität ab (in get_known_togre)…
+                    if let Some(togr) = self.get_known_togre(&newpos_schritt, &p.not()) {
+                        // …und verarbeiten ggf. das Ergebnis: Wenn positiv, dann Short-Circuit…
+                        if togr == p.togre() { return togr; }
+                        // …wenn neutral, dann in der Flag speichern.
+                        else if togr == Togre::R { neutral = true; }
+                    // Wenn gar kein Ergebnis, müssen wir die neue Stellung später noch berechnen.
+                    } else { later.push(newpos_schritt); };
+
+                    // Außerdem könnte ich auch einen Sprung machen.
+                    let ziel_sprung= f + (p.m() * 12);
+                    // Dazu müsste (zusätzlich von der Bedingung oben, innerhalb derer wir uns immernoch befinden) das Feld vor `ziel_schritt` (`ziel_sprung`) frei sein…
+                    if ! (pos.of(&Player::X).contains(&ziel_sprung) || pos.of(&Player::O).contains(&ziel_sprung)) &&
+                        // …und ich müsste in der Initialreihe stehen.
+                        (*f < 6 || *f > 29) // (Wobei es hier kein Problem darstellt, dass theoretisch Initial- und Zielreihe (wegen mangelnder Fallunterscheidung nach Playern) nicht auseinandergehalten werden, weil Figuren in der Zielreihe bedeuten würden, dass pos gewonnen ist, und das ist nicht der Fall (siehe Komemntar ganz oben).)
+                        // …dann kann ich auch springen.
+                    {
+                        // Wenn das alles der Fall ist, dann kann ich auch springen. Jetzt kommt also dieselbe Routine von oben, leider kopiert, aber recht kurz.
+                        let newpos_sprung = pos.zug_anwenden(Zug { from: *f, to: ziel_sprung}, p);
+                        if let Some(togr) = self.get_known_togre(&newpos_sprung, &p.not()) {
+                            if togr == p.togre() { return togr; }
+                            else if togr == H::Togre::R { neutral = true; }
+                        } else { later.push(newpos_sprung) };
+                    }
+                } // Jetzt haben wir schon Schritt und Sprung geprüft. Wenn pos positiv ist, dann sind wir schon rausgeflogen. Wenn es neutral ist, ist das im neutral-Flag vermerkt. Stellungen, die noch unbekannt waren, sind in later gespeichert. Wir machen in gleicher Manier weiter mit den Schlagzügen:
+
+                // Ich könnte auch rechts schlagen.
+                let ziel_rechts = f + (p.m() * 5);
+                // Dazu dürfte jedoch f nicht am rechten Rand sein…
+                if (f + ((p.m() - 1) / -2)) % 6 != 0 &&
+                // …und schräg rechts davor müsste der Gegner stehen.
+                    pos.of(&p.not()).contains(&ziel_rechts)
+                {
+                    // Wenn das der Fall ist, wenden wir die bekannte Routine an:
+                    let newpos_rechts = pos.zug_anwenden(Zug { from: *f, to: ziel_rechts}, p);
+                    if let Some(togr) = self.get_known_togre(&newpos_rechts, &p.not()) {
+                        if togr == p.togre() { return togr; }
+                        else if togr == Togre::R { neutral = true; }
+                    } else { later.push(newpos_rechts) };
+                }
+                
+                // Ich könnte auch links schlagen.
+                let ziel_links = f + (p.m() * 7);
+                // Dazu dürfte `feld` nicht am linken Rand sein…
+                if ((f + ((p.m() + 1) / 2)) % 6) != 0 &&
+                // …und schräg links davor müsste der Gegner stehen…
+                    pos.of(&p.not()).contains(&ziel_links)
+                {
+                    // Wenn das der Fall ist, wenden wir die bekannte Routine an:
+                    let newpos_links = pos.zug_anwenden(Zug { from: *f, to: ziel_links}, p);
+                    if let Some(togr) = self.get_known_togre(&newpos_links, &p.not()) {
+                        if togr == p.togre() { return togr; }
+                        else if togr == H::Togre::R { neutral = true; }
+                    } else { later.push(newpos_links) };
+                }
+            }
+            // Zwischenstand: Wir haben jetzt über alle Startfelder iteriert und geschaut, welche Zugoptionen es dort gibt. Wenn die daraus resultierende Folgestellung bekannt war, dann sind wir (wenn sie positiv war) schon rausgeflogen oder haben (wenn sie neutral war) neutral=true gesetzt. Folgestellungen, die noch unbekannt waren, sind in later gespeichert.
+
+            // Jetzt iterieren wir über die unbekannten Folgestellungen und berechnen sie. Das kann länger dauern…
+            for late in later {
+                // DAS IST DER REKURSIVE AUFRUF!
+                let t = self.i(&late, &p.not());
+                // hier ggf. compl-Threshold einfügen, um DB klein zu halten.
+                self.set(late, &p.not(), &t);
+                // Jetzt bekannte Vorgehensweise: Wenn positiv, dann sofot abbrechen,…
+                if t == p.togre() { return t; }
+                // …wenn neutral, dann vermerken.
+                else if t == Togre::R { neutral = true; }
+            }
+            
+            // Zwischenstand: Wenn wir irgendwann eine positive Folgestellung gefunden hatten, sind wir schon längst rausgeflogen. Wenn wir eine neutrale gefunden hatten, ist das in neutral=true vermerkt.
+            // Wenn also neutral=false ist, dann ist pos garantiert negativ :'-(
+            if neutral { Togre::R } else { p.not().togre() }
+        }
+        
+        /// Kodiert die `DB` in einen String.
+        pub fn write(&self) -> String {
+            let mut x_x: Vec<Pos> = vec![];
+            let mut x_o: Vec<Pos> = vec![];
+            let mut x_r: Vec<Pos> = vec![];
+            for (pos, togre) in &self.x {
+                match togre {
+                    H::Togre::X => &mut x_x,
+                    H::Togre::O => &mut x_o,
+                    H::Togre::R => &mut x_r
+                }.push(pos.clone());
+            }
+            let mut o_x: Vec<Pos> = vec![];
+            let mut o_o: Vec<Pos> = vec![];
+            let mut o_r: Vec<Pos> = vec![];
+            for (pos, togre) in &self.o {
+                match togre {
+                    H::Togre::X => &mut o_x,
+                    H::Togre::O => &mut o_o,
+                    H::Togre::R => &mut o_r
+                }.push(pos.clone());
+            }
+            [
+                String::from("Rusty Togre DB saved as string in format x_x x_o x_r o_x o_o o_r. Data follows here: %%"),
+                Pos::write_collection(&x_x),
+                Pos::write_collection(&x_o),
+                Pos::write_collection(&x_r),
+                Pos::write_collection(&o_x),
+                Pos::write_collection(&o_o),
+                Pos::write_collection(&o_r)
+            ].join("#")
+        }
+    }
+
+    pub struct CalcResult {
+        pub pos: String,
+        pub p: char,
+        pub t: H::Togre,
+        pub entries: usize,
+        times: (i64, i64, i64),
+        pub duration: u128
+    }
+    impl CalcResult {
+        pub fn message(&self) -> String {
+            format!(
+                "Stellung {}{}{}{}{}{} mit Player {}{}{}{}{}{} in {}{} {}ms {}{} berechnet: {}{}  {:?}  {}{}   - {} neue Einträge. Aufruf-Profil: {:?}",
+                color::Fg(color::Red),
+                style::Bold,
+                style::Underline,
+                self.pos,
+                style::Reset,
+                color::Fg(color::Black),
+
+                color::Fg(color::Red),
+                style::Bold,
+                style::Underline,
+                self.p,
+                style::Reset,
+                color::Fg(color::Black),
+
+                style::Bold,
+                color::Bg(color::Yellow),
+                self.duration,
+                color::Bg(color::Reset),
+                style::Reset,
+
+                color::Bg(color::Green),
+                style::Bold,
+                self.t,
+                style::Reset,
+                color::Bg(color::Reset),
+                self.entries,
+                self.times
+            )
+        }
+    }
+
+    pub fn calc_tool (args: &mut Vec<&str>) {
+        let mut write = false;
+        let mut file = String::from("");
+        if args[1] == "-w" {
+            write = true;
+            file = args[2].to_string();
+            args.remove(0);
+            args.remove(0);
+        }
+        let mut db = DB::new();
+        let res = db.calc(args[1].to_string(), args[2]);
+        println!("{}", res.message());
+        if write { std::fs::write(file.clone(), db.write()).expect(format!("Could not be written to {}", file).as_str()); }
+    }
+}
+
+#[allow(non_snake_case)]
+pub mod HK {
+    use super::H::{Pos, Player};
+    use std::time::Instant;
+
+    /// Allgemeines Set mit Stellungen für beide Player.
+    pub struct Set { pub x: Vec<Pos>, pub o: Vec<Pos>}
+    impl Set {
+        /// Erstellt ein leeres Set.
+        pub fn new() -> Set { Set { x: vec![], o: vec![] } }
+        /// Erstellt ein neues Set aus einem kodierten String.
+        pub fn from(code: String) -> Set {
+            let mut s = Set::new();
+            let parts = code.split("#").map(|s| s.to_string()).collect::<Vec<String>>();
+            s.x.append(&mut Pos::collection_from(parts[0].clone()));
+            s.o.append(&mut Pos::collection_from(parts[1].clone()));
+            s
+        }
+        /// Prüft, ob `pos` mit dem Player `p` im Set enthalten ist.
+        pub fn has(&self, pos: &Pos, p: &Player) -> bool {
+            (if p == &Player::X { &self.x } else { &self.o }).contains(pos)
+        }
+        /// Fügt `pos` mit Player `p` zum Set hinzu, wenn nicht schon enthalten. Der Return-Wert gibt an, ob ein neuer Wert hinzugefügt wurde.
+        pub fn add(&mut self, pos: Pos, p: &Player) -> bool {
+            let v = if p == &Player::X { &mut self.x } else { &mut self.o };
+            if v.contains(&pos) { false } else { v.push(pos); true }
+        }
+        /// Kodiert das `Set` in einen `String`, wobei X und O durch `#` getrennt werden.
+        pub fn write(&self) -> String {
+            Pos::write_collection(&self.x) + "#" + &Pos::write_collection(&self.o)
+        }
+        /// Gibt die Gesamtanzahl aller Einträge aus.
+        pub fn len(&self) -> usize {
+            self.x.len() + self.o.len()
+        }
+        /// Fügt alle Elemente von `other` in dieses Set hinzu
+        pub fn join(&mut self, other: Set) {
+            for element in other.x { self.add(element, &Player::X); }
+            for element in other.o { self.add(element, &Player::O); }
+        }
+        /// Entfernt bis zu `count` Elemente (zufällig) aus diesem Set und gibt sie als separates Set zurück.
+        pub fn seperate(&mut self, count: i32) -> Set {
+            let mut n = Set::new();
+            for _ in 0..(count / 2) {
+                if self.x.len() > 0 { n.add(self.x.swap_remove(0), &Player::X); }
+                else if self.o.len() > 0 { n.add(self.o.swap_remove(0), &Player::O); }
+                else { break; };
+            }
+            n
+        }
+        /// Entfernt ein (zufälliges) Element aus dem Set und gibt Some(Element), wenn keines mehr enthalten ist, None zurück.
+        pub fn drop_one(&mut self) -> Option<(Pos, Player)> {
+            if self.x.len() > 0 {
+                Some((self.x.swap_remove(0), Player::X))
+            }
+            else if self.o.len() > 0 {
+                Some((self.o.swap_remove(0), Player::O))
+            }
+            else { None }
+        }
+    }
+    pub struct Halbkreis {
+        pub c: Set,
+        pub arms: Set,
+        compl: usize,
+        start_pos: Pos,
+        start_player: Player
+    }
+    impl Halbkreis {
+        /// Dekodiert einen `Halbkreis` aus dem gegeben `code` (Gegenstück zu `write`).
+        pub fn from(code: String) -> Halbkreis {
+            // Die ersten drei Angaben sind fiktiv. Da ich kein System habe, um aus einem String-Kodierten HK diese Angaben zu extrahieren, habe ich die entsprechenden Felder im struct als private markiert und die Angaben unten gefaket.
+            Halbkreis { compl: 8, start_pos: Pos::from("-".to_string()), start_player: Player::X, arms: Set::new(), c: Set::from(code.split("%%").collect::<Vec<&str>>()[1].to_string())}
+        }
+        /// Generiert einen neuen `Halbkreis` bei der Komplexität `compl` von der `start_stellung` mit dem `start_player` aus und gibt diesen zurück.
+        pub fn gener(start_pos: Pos, start_player: &Player, compl: usize) -> Halbkreis {
+            let mut h = Halbkreis { c: Set::new(), arms: Set::new(), compl, start_pos, start_player: *start_player};
+            h.i(h.start_pos.clone(), start_player);
+            h
+        }
+        /// ***Nur für internen Gebrauch:*** Rekursive Kernfunktion zur Halbkreis-Generation.
+        fn i(&mut self, pos: Pos, p: &Player) {
+            // Ist pos Teil des Halbkreises? Dann abspeichern.
+            if pos.compl() == self.compl {
+                self.c.add(pos, p);
+            // sonst: wurde pos schon als Arm berechnet? Wenn nein:
+            } else if ! self.arms.has(&pos, p) {
+                // Über Folgestellungen iterieren und berechnen
+                for fs in pos.folgestellungen(p) {
+                    self.i(fs, &p.not());
+                }
+                self.arms.add(pos, p);
+            };
+        }
+        /// Kodiert den `Halbkreis` in einen `String`.
+        pub fn write(&self, remarks: String) -> String {
+            format!("Rusty-Togre Halbkreis: {}/{:?} (compl: {}) im Format X#O\nRemarks: {}\n%%{}", self.start_pos.write(), self.start_player, self.compl, remarks, self.c.write())
+        }
+    }
+
+    pub fn tool (args: &mut Vec<&str>) {
+        // rusty-togre hk -w out.hkdb ef.kl X 8
+        let mut write = false;
+        let mut file = String::from("");
+        if args[1] == "-w" {
+            write = true;
+            file = args[2].to_string();
+            args.remove(0);
+            args.remove(0);
+        }
+        let (pos, player, compl) = (
+            Pos::from(args[1].to_string()),
+            match args[2] {"X" => &Player::X, "O" => &Player::O, _ => panic!("Invalid Player Code: {}.", args[2])},
+            args[3].to_string().parse::<usize>().expect(&format!("Invalid complexity threshold: {}", args[3]))
+        );
+        println!("Halbkreis mit Komplexität {} wird für {}/{:?} berechnet.", compl, pos.write(), player);
+        let start_time = Instant::now();
+        let hk = Halbkreis::gener(pos, player, compl);
+        let ms = Instant::now().duration_since(start_time).as_millis();
+        println!("Halbkreis-Berechnung abgeschlossen nach {}ms abgeschlossen. {} Elemente enthalten, {} bekannte Arme.", ms, hk.c.len(), hk.arms.len());
+        if write { std::fs::write(file, hk.write(format!("In {}ms berechnet.", {ms}).to_string())).expect("Halbkreis konnte nicht gesichert werden."); }
+    }
+}

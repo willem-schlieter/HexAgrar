@@ -1,0 +1,15 @@
+[package]
+name = "rusty-togre"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+termion = "*"
+
+# Unbedingt für den Ernstfall anschalten! Bringt leichte Performance-Verbesserungen (12345.vwxyz/X: von 18700ms auf 18200ms (= 3%); beim Halbkreis "- X 10" sogar 6%)
+[profile.release]
+lto = true
+codegen-units = 1
+# Außerdem gut für die Performance: RUSTFLAGS="-C target-cpu=native" cargo build --release

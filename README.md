@@ -1,0 +1,14 @@
+# HexAgrar
+
+#### HexAgrar ist ein Spiel auf 6x6 Feldern. Jede Seite besitzt 6 Figuren, die (wie Schach-Bauern) geradeaus ziehen oder diagonal schlagen können. Steht eine Figur noch ganz am Anfang, darf sie einmalig zwei Schritte gehen. Wer als erstes die gegnerische Linie erreicht hat, gewinnt das Spiel. Kann ein Spieler nicht mehr ziehen, ended das Spiel im Remis.
+
+Hier ist alle unsere Software zu HexAgrar zu finden.
+In `campus` befindet sich die WebApp, in der man das Spiel gegeneinander oder gegen Automaten spielen kann. Man kann in den Entwickler- und Programmiereransichten auch weitere Tools wie den TOGRE-Rechner finden.
+In `rusty-hexagrar` befindet sich in Rust geschriebene Software zu Hexagrar. Diese kann in der Kommandozeile ausgeführt werden.
+In `wasm` befindet sich ein WebAssembly-Modul, dass die Software aus `rusty-hexagrar` für den Campus verfügbar macht.
+
+***Das Programm kann über GitHub Pages gestartet werden:***
+
+[https://willem-schlieter.github.io/HexAgrar/](https://willem-schlieter.github.io/HexAgrar/)
+
+Das Projekt wird mit `SvelteJS`, `Typescript`, `Webpack` und `wasm-pack` entwickelt.
