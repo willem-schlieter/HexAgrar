@@ -10,15 +10,27 @@
     function start () {
         $togreRunning = true;
         window.setTimeout(() => {
-            const result = db.calc(H.convert.c($stellung), $amZug, optMeth, prefdb);
-            const output = [
-                result.s + "<br>Player." + result.p,
-                (result.optionMethod) + "<br>" + (result.prefdb ? "Ja" : "Nein"),
-                `<h3 style="font-size: 200%; color: red; display: inline; margin: 20px">${result.t}</h3>`,
-                result.time.toLocaleString() + "ms",
-                (result.db.xnew + result.db.onew).toLocaleString()
-            ];
-            out.log(output);
+            if (useRust) {
+                T.rustyTogre($stellung, $amZug).then(result => {
+                    out.log([
+                        H.convert.c($stellung) + "<br>Player." + $amZug.c,
+                        "<b>RustyTogre</b>",
+                        `<h3 style="font-size: 200%; color: red; display: inline; margin: 20px">${result}</h3>`,
+                        "???",
+                        "???"
+                    ]);
+                });
+            } else {
+                const result = db.calc(H.convert.c($stellung), $amZug, optMeth, prefdb);
+                const output = [
+                    result.s + "<br>Player." + result.p,
+                    (result.optionMethod) + "<br>" + (result.prefdb ? "Ja" : "Nein"),
+                    `<h3 style="font-size: 200%; color: red; display: inline; margin: 20px">${result.t}</h3>`,
+                    result.time.toLocaleString() + "ms",
+                    (result.db.xnew + result.db.onew).toLocaleString()
+                ];
+                out.log(output);
+            }
             $togreRunning = false;
         }, 1000);
     }
@@ -38,6 +50,7 @@
     let prefdb: boolean = true;
     let showOpts = false;
     let optMeth: "pure" | "logfin" | "preffin" = "pure";
+    let useRust = false;
 </script>
 
 <h1 style="display:inline;">TOGRE-Rechner:</h1>
@@ -45,6 +58,9 @@
 <button id="start" on:click={start} disabled={$state === "aktiv"}>Start</button>
 <button on:click={() => {out.clear(); if (db.len()) out.log("Ausgabe gelöscht. " + db.len().toLocaleString() + " Einträge in der DB.");}} disabled={$state === "aktiv"}>Ausgabe löschen</button>
 <button on:click={dbclear} disabled={$state === "aktiv"}>Datenbank leeren</button>
+
+<label><input type="checkbox" bind:value={ useRust }> RustyTogre</label>
+<small>RustyTogre ist ein alternativer TOGRE-Rechner, der in Rust entwickelt ist. Er ist erheblich schneller. Achtung: RustyTogre verwendet seine eigene Datenbank und kann nicht auf die Datenbank des normalen Rechners zugreifen. Die Rust-Datenbank kann nur durch Neuladen der Seite gelöscht werden.</small><br><br>
 
 <button style="font-size: 8pt;"><label>
     <input type="checkbox" style="margin-bottom: 0;" bind:checked={showOpts}> Optimierungsdetails anzeigen</label>

@@ -20,7 +20,7 @@ export const togreRunning = writable(false);
 
 // export const devView = writable(false);
 export const classicView = writable(false);
-export const view = writable("std" as "pro" | "dev" | "std");
+export const view = writable("pro" as "pro" | "dev" | "std");
 export const vorschlagRechnen = writable(true);
 export const shouldValidate = writable(false);
 export const validate = derived([shouldValidate, view], ([s, v]) => s || (v === "std"));

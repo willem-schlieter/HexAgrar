@@ -6,6 +6,8 @@
  * AUF KEINEN FALL interfacebezogen oder mit DOM agieren!
  */
 
+import type Togre from "./comp/Togre.svelte";
+
 // Um zur Browser-Version zurückzukehren, einfach den "export" vor der namespace entfernen!
 
 namespace H {
@@ -520,7 +522,6 @@ namespace H {
         // TOGRE-Berechnung des Halbkreises
         // T.DB.import()-Methode
         // TOGRE-Automat (Shell)
-
     
 }
 

@@ -6,6 +6,7 @@ pub const SCORE_FINAL: i8 = 13;
 
 #[allow(non_snake_case)]
 pub mod H {
+
     use super::SCORE_FINAL;
 
     const FIELDS: [char; 36] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
@@ -33,7 +34,7 @@ pub mod H {
             let mut res = [vec![], vec![]];
             for i in 0..2 {
                 for ch in parts[i].chars() {
-                    match FIELDS.into_iter().position(|e| e == ch) {
+                    match IntoIterator::into_iter(FIELDS).position(|e| e == ch) {
                         Some(u) => {
                             if res[i].len() == 0 || res[i][res[i].len() - 1] < u as i8 { res[i].push(u as i8) }
                             else {
@@ -286,9 +287,7 @@ pub mod H {
 
 #[allow(non_snake_case)]
 pub mod T {
-    extern crate termion;
-    use termion::{color, style};
-    use std::{collections::HashMap, time::Instant};
+    use std::collections::HashMap;
     use super::H;
     use H::{ Togre, Pos, Player };
 
@@ -351,7 +350,6 @@ pub mod T {
         }
         pub fn calc(&mut self, pos: &Pos, p: H::Player, full: bool) -> CalcResult {
             let old_len = self.len();
-            let before = Instant::now();
             let t = match pos.won() {
                 Some(p) => p.togre(),
                 None => {
@@ -367,8 +365,7 @@ pub mod T {
                 p: p.c(),
                 t,
                 entries: self.len() - old_len,
-                times: self.times,
-                duration: Instant::now().duration_since(before).as_millis()
+                times: self.times
             }
         }
         /// ***Nur für internen Gebrauch:*** Rekursive Kernfunktion zur Togre-Berechnung.
@@ -480,65 +477,14 @@ pub mod T {
         pub p: char,
         pub t: H::Togre,
         pub entries: usize,
-        times: (i64, i64, i64),
-        pub duration: u128
-    }
-    impl CalcResult {
-        pub fn message(&self) -> String {
-            format!(
-                "Stellung {}{}{}{}{}{} mit Player {}{}{}{}{}{} in {}{} {}ms {}{} berechnet: {}{}  {:?}  {}{}   - {} neue Einträge. Aufruf-Profil: {:?}",
-                color::Fg(color::Red),
-                style::Bold,
-                style::Underline,
-                self.pos,
-                style::Reset,
-                color::Fg(color::Black),
-
-                color::Fg(color::Red),
-                style::Bold,
-                style::Underline,
-                self.p,
-                style::Reset,
-                color::Fg(color::Black),
-
-                style::Bold,
-                color::Bg(color::Yellow),
-                self.duration,
-                color::Bg(color::Reset),
-                style::Reset,
-
-                color::Bg(color::Green),
-                style::Bold,
-                self.t,
-                style::Reset,
-                color::Bg(color::Reset),
-                self.entries,
-                self.times
-            )
-        }
+        pub times: (i64, i64, i64),
     }
 
-    pub fn calc_tool (args: &mut Vec<&str>) {
-        let mut write = false;
-        let mut file = String::from("");
-        if args[1] == "-w" {
-            write = true;
-            file = args[2].to_string();
-            args.remove(0);
-            args.remove(0);
-        }
-        let mut db = DB::new();
-        db.set(Pos::from("8k.l"), &Player::O, &Togre::X);
-        let res = db.calc(&Pos::from(args[1]), Player::from(args[2]), args[3] == "-full");
-        println!("{}", res.message());
-        if write { std::fs::write(file.clone(), db.write()).expect(format!("Could not be written to {}", file).as_str()); }
-    }
 }
 
 #[allow(non_snake_case)]
 pub mod HK {
     use super::H::{Pos, Player};
-    use std::time::Instant;
 
     /// Allgemeines Set mit Stellungen für beide Player.
     pub struct Set { pub x: Vec<Pos>, pub o: Vec<Pos>}
@@ -651,16 +597,16 @@ pub mod HK {
             args[3].to_string().parse::<usize>().expect(&format!("Invalid complexity threshold: {}", args[3]))
         );
         println!("Halbkreis mit Komplexität {} wird für {}/{:?} berechnet.", compl, pos.write(), player);
-        let start_time = Instant::now();
         let hk = Halbkreis::gener(pos, player, compl);
-        let ms = Instant::now().duration_since(start_time).as_millis();
-        println!("Halbkreis-Berechnung abgeschlossen nach {}ms abgeschlossen. {} Elemente enthalten, {} bekannte Arme.", ms, hk.c.len(), hk.arms.len());
-        if write { std::fs::write(file, hk.write(format!("In {}ms berechnet.", {ms}).to_string())).expect("Halbkreis konnte nicht gesichert werden."); }
+        println!("Halbkreis-Berechnung abgeschlossen nach {}ms abgeschlossen. {} Elemente enthalten, {} bekannte Arme.", "?", hk.c.len(), hk.arms.len());
+        if write { std::fs::write(file, hk.write(format!("Berechnet.").to_string())).expect("Halbkreis konnte nicht gesichert werden."); }
     }
 }
 
 #[allow(non_snake_case)]
 pub mod Auto {
+    use std::convert::TryInto;
+
     use super::H::*;
     use super::T;
     // use super::SCORE_FINAL;
