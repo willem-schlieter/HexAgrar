@@ -97,9 +97,74 @@ namespace T {
                 xlen = this.len(H.Player.X),
                 olen = this.len(H.Player.O);
 
-            // console.log("T.DB.calc(" + c + ", " + p.c + " startet jetzt die Rekursion.");
             const t = this[(prefdb ? "i_prefdb" : "i")](startStellung, p);
-            // console.log("T.DB.calc hat die Rekursion beendet.");
+
+            const r: CalcResult = {
+                s: c,
+                p: p.c,
+                optionMethod: optionMethod,
+                prefdb: prefdb || false,
+                t: t,
+                time: Date.now() - zeit,
+                db: {
+                    x: this.len(H.Player.X),
+                    o: this.len(H.Player.O),
+                    xnew: 0,
+                    onew: 0
+                // },
+                // times: {
+                //     i: times.i,
+                //     get: times.get,
+                //     set: times.set
+                }
+            }
+            r.db.xnew = r.db.x - xlen;
+            r.db.onew = r.db.o - olen;
+            return r;
+        }
+        /** Soll eigentlich mit 3 Threads rechnen, aber Thread 2 und der Main Thread warten auf Thread 1. Keine Ahnung, warum. */
+        async calcPara (c: H.Code, p: H.Player, optionMethod: "pure" | "logfin" | "preffin", prefdb?: boolean): Promise<CalcResult> {
+            this.optionMethod = optionMethod
+            const startStellung = H.convert.n(c),
+                zeit = Date.now(),
+                xlen = this.len(H.Player.X),
+                olen = this.len(H.Player.O);
+
+            const folgestellungen = H.zieleVonStellung(startStellung, p);
+            if (typeof folgestellungen != "string") {
+                console.log("Starte jetzt den Async Thread.");
+                const thread = (async function(db){
+                    console.log("Hi aus dem Async Thread.");
+                    while (folgestellungen.length) {
+                        const f = folgestellungen.shift();
+                        console.log(`Berechne ${H.convert.c(f)} im async thread.`);
+                        db[(prefdb ? "i_prefdb" : "i")](f, p.t);
+                    }
+                    console.log("Tschüss aus dem Async Thread.");
+                })(this);
+                console.log("Starte jetzt den Async Thread 2.");
+                const thread2 = (async function(db){
+                    console.log("Hi aus dem Async Thread 2.");
+                    while (folgestellungen.length) {
+                        const f = folgestellungen.shift();
+                        console.log(`Berechne ${H.convert.c(f)} im async thread 2.`);
+                        db[(prefdb ? "i_prefdb" : "i")](f, p.t);
+                    }
+                    console.log("Tschüss aus dem Async Thread 2.");
+                })(this);
+                console.log("Jetzt der Main Thread.");
+                while (folgestellungen.length) {
+                    const f = folgestellungen.shift();
+                    console.log(`Berechne ${H.convert.c(f)} im main thread.`);
+                    this[(prefdb ? "i_prefdb" : "i")](f, p.t);                }
+                console.log("Main Thread Ende. Warte auf den Async Thread...")
+                await thread;
+                console.log("Warte auf den Async Thread 2...")
+                await thread2;
+                console.log("Ende.")
+            }
+            console.log("TOGRE-Threads ended.")
+            const t = this[(prefdb ? "i_prefdb" : "i")](startStellung, p);
 
             const r: CalcResult = {
                 s: c,
