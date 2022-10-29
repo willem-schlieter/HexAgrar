@@ -5,6 +5,39 @@ use std::time::Instant;
 extern crate termion;
 use termion::{color, style};
 
+fn message(res: T::CalcResult, duration: u128) -> String {
+    format!(
+        "Stellung {}{}{}{}{}{} mit Player {}{}{}{}{}{} in {}{} {}ms {}{} berechnet: {}{}  {:?}  {}{}   - {} neue Einträge. Aufruf-Profil: {:?}",
+        color::Fg(color::Red),
+        style::Bold,
+        style::Underline,
+        res.pos,
+        style::Reset,
+        color::Fg(color::Black),
+
+        color::Fg(color::Red),
+        style::Bold,
+        style::Underline,
+        res.p,
+        style::Reset,
+        color::Fg(color::Black),
+
+        style::Bold,
+        color::Bg(color::Yellow),
+        duration,
+        color::Bg(color::Reset),
+        style::Reset,
+
+        color::Bg(color::Green),
+        style::Bold,
+        res.t,
+        style::Reset,
+        color::Bg(color::Reset),
+        res.entries,
+        res.times
+    )
+}
+
 fn main() {
     let args_old: Vec<String> = std::env::args().collect();
     let mut args: Vec<&str> = args_old.iter().map(|s| &**s).collect();
@@ -27,38 +60,7 @@ fn main() {
             //     "-v1" => { args.remove(0); T::calc_tool(&mut args) },
             //     _ => { T::calc_tool(&mut args) }
             // }
-            fn message(res: T::CalcResult, duration: u128) -> String {
-                format!(
-                    "Stellung {}{}{}{}{}{} mit Player {}{}{}{}{}{} in {}{} {}ms {}{} berechnet: {}{}  {:?}  {}{}   - {} neue Einträge. Aufruf-Profil: {:?}",
-                    color::Fg(color::Red),
-                    style::Bold,
-                    style::Underline,
-                    res.pos,
-                    style::Reset,
-                    color::Fg(color::Black),
-    
-                    color::Fg(color::Red),
-                    style::Bold,
-                    style::Underline,
-                    res.p,
-                    style::Reset,
-                    color::Fg(color::Black),
-    
-                    style::Bold,
-                    color::Bg(color::Yellow),
-                    duration,
-                    color::Bg(color::Reset),
-                    style::Reset,
-    
-                    color::Bg(color::Green),
-                    style::Bold,
-                    res.t,
-                    style::Reset,
-                    color::Bg(color::Reset),
-                    res.entries,
-                    res.times
-                )
-            }
+            
             let mut write = false;
             let mut file = String::from("");
             if args[1] == "-w" {
@@ -77,6 +79,12 @@ fn main() {
 
             println!("{}", message(res, Instant::now().duration_since(before).as_millis()));
             if write { std::fs::write(file.clone(), db.write()).expect(format!("Could not be written to {}", file).as_str()); }
+        }
+        "test_conc" => {
+            let before = Instant::now();
+            let res = T::calc_conc(&mut T::DB::new(), &H::Pos::from("1234.vwxy"), H::Player::X);
+            println!("{}", message(res, Instant::now().duration_since(before).as_millis()));
+
         }
         "inspect" => {
             let before = Instant::now();

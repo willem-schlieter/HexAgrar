@@ -1,7 +1,7 @@
 /*
 */
 
-pub const INFO: &str = "Ausgangsversion";
+pub const INFO: &str = "Ausgangsversion - Seit Oktober 2022 wird nur noch die maintained.";
 pub const SCORE_FINAL: i8 = 13;
 
 #[allow(non_snake_case)]
@@ -287,9 +287,10 @@ pub mod H {
 
 #[allow(non_snake_case)]
 pub mod T {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, thread};
     use super::H;
     use H::{ Togre, Pos, Player };
+    use std::sync::{Arc, Mutex};
 
     #[derive(Debug)]
     pub struct DB {
@@ -469,6 +470,108 @@ pub mod T {
                 Pos::write_collection(&o_r)
             ].join("#")));
             res
+        }
+    }
+
+    
+
+    fn get_conc(db_mutex: Arc<Mutex<DB>>, pos: &H::Pos, p: &H::Player) -> (Option<H::Togre>, Arc<Mutex<DB>>) {
+        let mut db = db_mutex.lock().unwrap();
+        let res = db.get(pos, p);
+        drop(db);
+        (res, db_mutex)
+    }
+
+    fn i_conc(db_mutex: Arc<Mutex<DB>>, pos: &H::Pos, p: &H::Player, thread_nr: usize, log: bool) -> (H::Togre, Arc<Mutex<DB>>) {
+        // pos ist garantiert nicht gewonnen und nicht in der DB. (Denn bei rekursivem Aufruf wurde dies schon vorher geprüft, s.u., und der manuelle Aufruf sollte über calc erfolgen, wo dies auch geschieht, s.o.)
+        
+        // Wir werden das Mutex öfters an eine Funktion übergeben und es zurückbekommen. Um es dann weiter zu benutzen, müssen wir es wieder speichern. Da Parameter immutable sind, müssen wir db_mutex mutable moven.
+        let mut mutex = db_mutex;
+        
+        let mut is_remis = true;    // pos ist final remis.
+        let mut is_r = false;       // pos ist Togre-neutral.
+        let mut later: Vec<Pos> = vec![];
+        
+        // Wir iterieren zunächst über die möglichen Startfelder.
+        for startfeld in pos.of(p) {
+            for zielfeld_op in pos.zielfelder(*startfeld, p) {
+                if let Some(zielfeld) = zielfeld_op {
+                    is_remis = false;
+                    let n = pos.zug_anwenden(*startfeld, zielfeld, p);
+                    if log { println!("#{}: Requesting to read.", thread_nr) }
+                    let getres = get_conc(mutex, &n, &p.not());
+                    if log { println!("#{}: Reading completed.", thread_nr) }
+                    mutex = getres.1;
+                    let t: Option<H::Togre> = match getres.0 {
+                        Some(saved) => Some(saved),
+                        None => {
+                            match n.won() {
+                                Some(won) => Some(won.togre()),
+                                None => None
+                            }
+                        }
+                    };
+                    if let Some(togr) = t {
+                        // Unglücklich. Ich sollte db_mutex nicht in jedem Rekursionsschritt klonen! Hatte aber ein komplexes Ownership-Problem, wenn ich einfach db_mutex zurückgebe, daher dieser Behelf. Möglichst irgendwann nochmal lösen.
+                        if togr == p.togre() { return (togr, mutex); }
+                        else if togr == H::Togre::R { is_r = true; }
+                    } else { later.push(n) };
+                }
+            }
+        }
+        for late in later {
+            let res = i_conc(mutex, &late, &p.not(), thread_nr, false);
+            let t = res.0;
+            mutex = res.1;
+            // ggf. compl-Threshold einfügen
+            if log { println!("#{}: Requesting to write.", thread_nr) }
+            let mut db = mutex.lock().unwrap();
+            db.set(late, &p.not(), &t);
+            drop(db);
+            if log { println!("#{}: Writing completed.", thread_nr) }
+            if t == p.togre() { return (t, mutex); }
+            else if t == H::Togre::R { is_r = true; }
+        }
+        if is_r || is_remis { (H::Togre::R, mutex) } else { (p.not().togre(), mutex) }
+    }
+    pub fn calc_conc(db: &mut DB, pos: &Pos, p: H::Player) -> CalcResult {
+        let old_len = db.len();
+        let t = match pos.won() {
+            Some(p) => p.togre(),
+            None => {
+                match db.get(&pos, &p) {
+                    Some(t) => t,
+                    None => {
+                        let mut folgestellungen = pos.folgestellungen(&p);
+                        let db_arc = Arc::new(Mutex::new(DB::new()));
+                        let mut handles = vec![];
+                        for ix in 0..folgestellungen.len() {
+                            let db_mutex = Arc::clone(&db_arc);
+                            let stellung = folgestellungen.remove(0);
+                            let handle = thread::spawn(move || {
+                                println!("#{}: Started.", ix);
+                                i_conc(db_mutex, &stellung, &p.not(), ix, true);
+                                println!("#{}: Completed.", ix);
+                            });
+                            handles.push(handle);
+                        }
+                        for handle in handles {
+                            handle.join().unwrap();
+                        }
+                        // Keine Ahnung, was das mit dem x soll. War ein Quick Fix.
+                        let x = db_arc.lock().unwrap().calc(&pos, p, false).t;
+                        x
+                    }
+                }
+            }
+        };
+        db.set(Pos::from(&pos.write()), &p, &t);
+        CalcResult {
+            pos: pos.write(),
+            p: p.c(),
+            t,
+            entries: db.len() - old_len,
+            times: db.times
         }
     }
 
