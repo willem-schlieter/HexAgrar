@@ -813,34 +813,54 @@ pub mod BTRS {
     pub const SCORE_FINAL: Score = 13;
 
     pub struct DB {
-        x: HashMap<Pos, Score>,
-        o: HashMap<Pos, Score>
+        x: HashMap<Pos, (Score, u8, Compl)>,
+        o: HashMap<Pos, (Score, u8, Compl)>
     }
     impl DB {
+     
         /// Erstellt eine neue, leere `DB`.
         pub fn new() -> DB { DB { x: HashMap::new(), o: HashMap::new() } }
-        /// Gibt die Gesamtzahl aller Einträge aus.
+      
+        // Gibt die Gesamtzahl aller Einträge aus.
         // pub fn len(&self) -> usize {
         //     self.x.len() + self.o.len()
         // }
-        pub fn get(&self, pos: &Pos, p: &Player) -> Option<Score> {
-            match (if *p == Player::X { &self.x } else { &self.o }).get(&pos) {
-                Some(t) => Some(*t),
-                None => None
-            }
+       
+        /// Gibt `Some(score)` zurück, wenn ein Eintrag mit derselben oder einer höheren Tiefe und demselben oder einem höheren compl-Grenzwert besteht.
+        pub fn get(&self, pos: &Pos, p: &Player, tiefe: u8, compl: Compl) -> Option<Score> {
+            if let Some(entry) = (if *p == Player::X { &self.x } else { &self.o }).get(&pos) {
+                if entry.1 >= tiefe && entry.2 >= compl { Some(entry.0) } else { None }
+            } else { None }
         }
-        pub fn set(&mut self, pos: Pos, p: &Player, score: Score) {
-            if let Some(old_score) = (if p.is_x() { &mut self.x } else { &mut self.o }).insert(pos, score) {
-                if old_score != score {
-                    // Pos kann nicht geloggt werden, weil es bereits in HashMap.insert gemoved wurde. Für den Fall, dass dieser Fehler auftritt, am besten pos clonen und Fehler rekonstruieren.
-                    panic!("BTRS.DB.set: Die Set-Anfrage [Pos moved]/{}={} wiederspricht einem bereits existenten Eintrag: {}. Das weist auf einen Logik-Fehler hin.", p.c(), score, old_score);
+       
+        /**
+        Setzt einen neuen Eintrag in der DB.
+
+        Besteht bereits ein Eintrag mit niedrigerer Tiefe oder niedrigerem compl-Grenzwert, wird dieser überschrieben.
+
+        `panic!()`, wenn ein Eintrag mit derselben Tiefe und demselben compl-Grenzwert, aber einem anderen Score existiert. 
+        */
+        pub fn set(&mut self, pos: Pos, p: &Player, score: Score, tiefe: u8, compl: Compl) {
+            let map = if p.is_x() { &mut self.x } else { &mut self.o };
+            // Wenn schon ein Eintrag hierfür besteht…
+            if let Some(existing) = map.get(&pos) {
+                // Bei identischen Parametern und verschiedenen Scores: panic!
+                if existing.1 == tiefe && existing.2 == compl && existing.0 != score {
+                    panic!("BTRS.DB.set: Die Set-Anfrage {}/{}={} (tiefe={}, compl={}) wiederspricht einem bereits existierenden Eintrag mit gleicher Tiefe und gleichem compl: {}.", pos.write(), p.c(), score, tiefe, compl, existing.0);
                 }
-            };
+                // Bei kleinerer Tiefe ODER kleinerem compl: überschreiben.
+                else if existing.1 < tiefe || existing.2 < compl {
+                    map.insert(pos, (score, tiefe, compl));
+                }
+                // Sonst: Alter Eintrag kann behalten werden.
+            }
+            // Wenn nicht: Neuer Eintrag.
         }
+   
     }
 
     /// Gibt die Folgestellung von `pos` mit dem für `p` besten BTRS-Score zurück.
-    fn answer(db: &mut DB, pos: Pos, p: &Player, tiefe: u8, compl_limit: Compl) -> Pos {
+    pub fn answer(db: &mut DB, pos: Pos, p: &Player, tiefe: u8, compl_limit: Compl) -> Pos {
         match pos.won() {
             Some(_) => pos,
             None => {
@@ -849,7 +869,7 @@ pub mod BTRS {
                     let mut best = (0, p.not().score());
                     for ix in 0..options.len() {
                         if best.1 == p.score() { break; }
-                        let s = match db.get(&options[ix], &p.not()) {
+                        let s = match db.get(&options[ix], &p.not(), tiefe - 1, compl_limit) {
                             Some(saved) => saved,
                             None => i(db, &options[ix], &p.not(), tiefe, compl_limit)
                         };
@@ -864,12 +884,10 @@ pub mod BTRS {
     }
 
     /// Berechnet den BTRS-Score von `pos` mit gegebenen Tiefen- und Compl-Limits.
-    fn calc(db: &mut DB, pos: &Pos, p: &Player, tiefe: u8, compl_limit: Compl) -> Score {
-        if let Some(won) = pos.won() {
-            won.score()
-        } else if let Some(score) = db.get(pos, p) {
-            score
-        } else { i(db, pos, p, tiefe, compl_limit)}
+    pub fn calc(db: &mut DB, pos: &Pos, p: &Player, tiefe: u8, compl_limit: Compl) -> Score {
+        if let Some(won) = pos.won() { won.score() }
+        else if let Some(score) = db.get(pos, p, tiefe, compl_limit) { score }
+        else { i(db, pos, p, tiefe, compl_limit)}
     }
     
     /// Rekursive BTRS-Funktion.
@@ -889,7 +907,6 @@ pub mod BTRS {
 
             // Wir iterieren zunächst über die möglichen Startfelder.
             for startfeld in pos.of(p) {
-
                 // Für jedes Startfeld iterieren wir über die vier Zielfeld-Optionen.
                 for zielfeld_option in pos.zielfelder(*startfeld, p) {
                     // Wenn das Zielfeld infrage kommt, man also darauf ziehen kann…
@@ -897,7 +914,7 @@ pub mod BTRS {
                         // …erzeugen wir zunächst die resultierende Stellung.
                         let newpos = pos.zug_anwenden(*startfeld, zielfeld, p);
                         // Wir prüfen, ob der Score bereits gespeichert ist:
-                        let score: Option<Score> = match db.get(&newpos, &p.not()) {
+                        let score: Option<Score> = match db.get(&newpos, &p.not(), tiefe - 1, compl_limit) {
                             Some(saved) => Some(saved),
                             None => {
                                 // Wenn nicht, prüfen wir, ob newpos final ist.
@@ -927,7 +944,7 @@ pub mod BTRS {
             for late in later {
                 // Wir errechnen den Score dieser Folgestellung.
                 let score: i8 = i(db, &late, &p.not(), tiefe - 1, compl_limit);
-                db.set(late, &p.not(), score);
+                db.set(late, &p.not(), score, tiefe - 1, compl_limit);
                 if score == p.score() { return score; }
                 else { scores.push(score); }
             }
