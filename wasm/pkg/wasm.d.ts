@@ -39,4 +39,8 @@ export class TogreCalculator {
 * @returns {number}
 */
   calc(poscode: string, p: string): number;
+/**
+* @returns {number}
+*/
+  len(): number;
 }

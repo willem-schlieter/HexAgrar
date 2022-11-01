@@ -11,15 +11,15 @@
         $togreRunning = true;
         window.setTimeout(() => {
             if (useRust) {
-                T.rustyTogre($stellung, $amZug).then(result => {
-                    out.log([
-                        H.convert.c($stellung) + "<br>Player." + $amZug.c,
-                        "<b>RustyTogre</b>",
-                        `<h3 style="font-size: 200%; color: red; display: inline; margin: 20px">${result}</h3>`,
-                        "???",
-                        "???"
-                    ]);
-                });
+                const before = Date.now();
+                const [res, entries] = T.rustyTogre($stellung, $amZug);
+                out.log([
+                    H.convert.c($stellung) + "<br>Player." + $amZug.c,
+                    "<b>RustyTogre</b>",
+                    `<h3 style="font-size: 200%; color: red; display: inline; margin: 20px">${res}</h3>`,
+                    String(Date.now() - before) + "ms",
+                    entries.toLocaleString()
+                ]);
             } else {
                 const result = db.calc(H.convert.c($stellung), $amZug, optMeth, prefdb);
                 const output = [
@@ -50,7 +50,7 @@
     let prefdb: boolean = true;
     let showOpts = false;
     let optMeth: "pure" | "logfin" | "preffin" = "pure";
-    let useRust = false;
+    let useRust = true;
 </script>
 
 <h1 style="display:inline;">TOGRE-Rechner:</h1>
@@ -59,7 +59,7 @@
 <button on:click={() => {out.clear(); if (db.len()) out.log("Ausgabe gelöscht. " + db.len().toLocaleString() + " Einträge in der DB.");}} disabled={$state === "aktiv"}>Ausgabe löschen</button>
 <button on:click={dbclear} disabled={$state === "aktiv"}>Datenbank leeren</button>
 
-<label><input type="checkbox" bind:value={ useRust }> RustyTogre</label>
+<label><input type="checkbox" bind:checked={ useRust }> RustyTogre</label>
 <small>RustyTogre ist ein alternativer TOGRE-Rechner, der in Rust entwickelt ist. Er ist erheblich schneller. Achtung: RustyTogre verwendet seine eigene Datenbank und kann nicht auf die Datenbank des normalen Rechners zugreifen. Die Rust-Datenbank kann nur durch Neuladen der Seite gelöscht werden.</small><br><br>
 
 <button style="font-size: 8pt;"><label>

@@ -118,12 +118,12 @@ export const A: { [index: string]: Automat } = {
             // else return A.kea400_sea(s, p, bf[0]);
             
             console.log("Spiele TOGRE-vollständig");
-            const t = T.rustyTogre(s, p);
+            const t = T.rustyTogre(s, p)[0];
             console.log("TOGRE der aktuellen Stellung: ", t);
 
             let remis: H.Option[] = [];
             for (let option of o) {
-                const t = T.rustyTogre(option.ziel, p.t);
+                const t = T.rustyTogre(option.ziel, p.t)[0];
                 if (t == p.c) return option;
                 else if (t === "R") remis.push(option);
             }

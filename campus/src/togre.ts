@@ -382,8 +382,9 @@ namespace T {
     export const stdDB = new DB("Die Standard-Datenbank, die im Namensraum T gesichert wird.");
 
     let rustyCalculator = TogreCalculator.new();
-    export function rustyTogre (s: H.Numpos, p: H.Player): H.Final {
-        return ["O", "R", "X"][rustyCalculator.calc(H.convert.c(s), p.c) + 1] as H.Final;
+    export function rustyTogre (s: H.Numpos, p: H.Player): [H.Final, number] {
+        const before = rustyCalculator.len();
+        return [["O", "R", "X"][rustyCalculator.calc(H.convert.c(s), p.c) + 1] as H.Final, rustyCalculator.len() - before];
     }
 }
 

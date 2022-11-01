@@ -223,6 +223,13 @@ export class TogreCalculator {
         const ret = wasm.togrecalculator_calc(this.ptr, ptr0, len0, ptr1, len1);
         return ret;
     }
+    /**
+    * @returns {number}
+    */
+    len() {
+        const ret = wasm.togrecalculator_len(this.ptr);
+        return ret >>> 0;
+    }
 }
 
 export function __wbg_new_abda76e883ba8a5f() {

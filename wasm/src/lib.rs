@@ -26,6 +26,9 @@ impl TogreCalculator {
             hexagrar::H::Togre::R => 0
         }
     }
+    pub fn len(&self) -> usize {
+        self.db.len()
+    }
 }
 
 #[wasm_bindgen]
