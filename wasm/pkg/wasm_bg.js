@@ -115,10 +115,10 @@ function addHeapObject(obj) {
 }
 /**
 */
-export class BTRS {
+export class BTRSInterface {
 
     static __wrap(ptr) {
-        const obj = Object.create(BTRS.prototype);
+        const obj = Object.create(BTRSInterface.prototype);
         obj.ptr = ptr;
 
         return obj;
@@ -133,43 +133,30 @@ export class BTRS {
 
     free() {
         const ptr = this.__destroy_into_raw();
-        wasm.__wbg_btrs_free(ptr);
+        wasm.__wbg_btrsinterface_free(ptr);
     }
     /**
-    * @returns {number}
+    * @returns {BTRSInterface}
     */
-    get d() {
-        const ret = wasm.__wbg_get_btrs_d(this.ptr);
-        return ret;
-    }
-    /**
-    * @param {number} arg0
-    */
-    set d(arg0) {
-        wasm.__wbg_set_btrs_d(this.ptr, arg0);
-    }
-    /**
-    * @param {number} tiefenlimit
-    * @param {number} compl
-    * @returns {BTRS}
-    */
-    static new(tiefenlimit, compl) {
-        const ret = wasm.btrs_new(tiefenlimit, compl);
-        return BTRS.__wrap(ret);
+    static new() {
+        const ret = wasm.btrsinterface_new();
+        return BTRSInterface.__wrap(ret);
     }
     /**
     * @param {string} poscode
     * @param {string} p
+    * @param {number} tiefe
+    * @param {number} compl
     * @returns {string}
     */
-    answer(poscode, p) {
+    answer(poscode, p, tiefe, compl) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
             const ptr0 = passStringToWasm0(poscode, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
             const len0 = WASM_VECTOR_LEN;
             const ptr1 = passStringToWasm0(p, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
             const len1 = WASM_VECTOR_LEN;
-            wasm.btrs_answer(retptr, this.ptr, ptr0, len0, ptr1, len1);
+            wasm.btrsinterface_answer(retptr, this.ptr, ptr0, len0, ptr1, len1, tiefe, compl);
             var r0 = getInt32Memory0()[retptr / 4 + 0];
             var r1 = getInt32Memory0()[retptr / 4 + 1];
             return getStringFromWasm0(r0, r1);
@@ -181,14 +168,16 @@ export class BTRS {
     /**
     * @param {string} poscode
     * @param {string} p
+    * @param {number} tiefe
+    * @param {number} compl
     * @returns {number}
     */
-    calc(poscode, p) {
+    calc(poscode, p, tiefe, compl) {
         const ptr0 = passStringToWasm0(poscode, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         const ptr1 = passStringToWasm0(p, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len1 = WASM_VECTOR_LEN;
-        const ret = wasm.btrs_calc(this.ptr, ptr0, len0, ptr1, len1);
+        const ret = wasm.btrsinterface_calc(this.ptr, ptr0, len0, ptr1, len1, tiefe, compl);
         return ret;
     }
 }

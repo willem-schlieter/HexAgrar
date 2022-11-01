@@ -2,29 +2,28 @@
 /* eslint-disable */
 /**
 */
-export class BTRS {
+export class BTRSInterface {
   free(): void;
 /**
-* @param {number} tiefenlimit
-* @param {number} compl
-* @returns {BTRS}
+* @returns {BTRSInterface}
 */
-  static new(tiefenlimit: number, compl: number): BTRS;
+  static new(): BTRSInterface;
 /**
 * @param {string} poscode
 * @param {string} p
+* @param {number} tiefe
+* @param {number} compl
 * @returns {string}
 */
-  answer(poscode: string, p: string): string;
+  answer(poscode: string, p: string, tiefe: number, compl: number): string;
 /**
 * @param {string} poscode
 * @param {string} p
+* @param {number} tiefe
+* @param {number} compl
 * @returns {number}
 */
-  calc(poscode: string, p: string): number;
-/**
-*/
-  d: number;
+  calc(poscode: string, p: string, tiefe: number, compl: number): number;
 }
 /**
 */

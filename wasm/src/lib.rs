@@ -1,5 +1,6 @@
 mod utils;
 mod hexagrar;
+use hexagrar::{ BTRS, H };
 
 use wasm_bindgen::prelude::*;
 
@@ -28,18 +29,24 @@ impl TogreCalculator {
 }
 
 #[wasm_bindgen]
-pub struct BTRS {
-    c: hexagrar::BTRS::Calculator,
-    pub d: u8
+pub struct BTRSInterface {
+    db: BTRS::DB
 }
 #[wasm_bindgen]
-impl BTRS {
-    pub fn new(tiefenlimit: u8, compl: u8) -> BTRS { BTRS { c: hexagrar::BTRS::Calculator::new(tiefenlimit, compl), d: 19 } }
-    pub fn answer(&mut self, poscode: &str, p: &str) -> String {
-        self.c.answer(hexagrar::H::Pos::from(poscode), &hexagrar::H::Player::from(p)).write()
+impl BTRSInterface {
+
+    pub fn new() -> BTRSInterface {
+        utils::set_panic_hook();
+        BTRSInterface { db: BTRS::DB::new() }
     }
-    pub fn calc(&mut self, poscode: &str, p: &str) -> i8 {
-        self.c.calc(&hexagrar::H::Pos::from(poscode), &hexagrar::H::Player::from(p))
+
+    pub fn answer(&mut self, poscode: &str, p: &str, tiefe: u8, compl: u8) -> String {
+        BTRS::answer(&mut self.db, H::Pos::from(poscode), &H::Player::from(p), tiefe, compl).write()
+    }
+
+    pub fn calc(&mut self, poscode: &str, p: &str, tiefe: u8, compl: u8) -> i8 {
+        // self.c.calc(&hexagrar::H::Pos::from(poscode), &hexagrar::H::Player::from(p))
+        BTRS::calc(&mut self.db, &H::Pos::from(poscode), &H::Player::from(p), tiefe, compl)
     }
 
 }
