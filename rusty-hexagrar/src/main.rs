@@ -14,13 +14,13 @@ impl Clock {
     // pub fn reset(&mut self) { self.start = Instant::now(); }
 }
 
-fn emph(text: String) -> String {
-    format!("{}{}{}{}{}",color::Bg(color::Yellow),
-    style::Bold,
-    text,
-    style::Reset,
-    color::Bg(color::Reset))
-}
+// fn emph(text: String) -> String {
+//     format!("{}{}{}{}{}",color::Bg(color::Yellow),
+//     style::Bold,
+//     text,
+//     style::Reset,
+//     color::Bg(color::Reset))
+// }
 
 fn message(res: T::CalcResult, duration: u128) -> String {
     format!(
