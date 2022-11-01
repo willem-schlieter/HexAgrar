@@ -1,8 +1,8 @@
 import H from "./core";
 import T from "./togre";
 import { later, random, wait } from "./tools";
-import { BTRS } from "wasm";
-let btrs = BTRS.new(6, 5);
+import { BTRSInterface } from "wasm";
+let btrs = BTRSInterface.new();
 
 export interface Info {
     display: boolean;
@@ -158,9 +158,9 @@ export const A: { [index: string]: Automat } = {
 
     },
     btrs(s, p, o) {
-        const result = H.convert.c(H.convert.normalize(H.convert.n(btrs.answer(H.convert.c(s), p.c))));
+        const result = H.convert.c(H.convert.normalize(H.convert.n(btrs.answer(H.convert.c(s), p.c, 6, 5))));
         const res = o.filter(option => {
-                return H.convert.c(H.convert.normalize(option.ziel)) === result;
+            return H.convert.c(H.convert.normalize(option.ziel)) === result;
         });
         if (res.length) return res[0];
         else throw new Error(`BTRS gab keine brauchbare Antwort. ${H.convert.c(H.convert.normalize(H.convert.n(result)))} ist nicht in ${o} enthalten.`);
