@@ -55,6 +55,38 @@ fn message(res: T::CalcResult, duration: u128) -> String {
     )
 }
 
+fn btrs_message(res: BTRS::CalcResult, duration: u128) -> String {
+    format!(
+        "Stellung {}{}{}{}{}{} mit Player {}{}{}{}{}{} in {}{} {}ms {}{} berechnet: {}{} {} {}{}   - {} neue Einträge.",
+        color::Fg(color::Red),
+        style::Bold,
+        style::Underline,
+        res.pos,
+        style::Reset,
+        color::Fg(color::Black),
+
+        color::Fg(color::Red),
+        style::Bold,
+        style::Underline,
+        res.p,
+        style::Reset,
+        color::Fg(color::Black),
+
+        style::Bold,
+        color::Bg(color::Yellow),
+        duration,
+        color::Bg(color::Reset),
+        style::Reset,
+
+        color::Bg(color::Green),
+        style::Bold,
+        res.score,
+        style::Reset,
+        color::Bg(color::Reset),
+        res.entries
+    )
+}
+
 fn main() {
     let args_old: Vec<String> = std::env::args().collect();
     let mut args: Vec<&str> = args_old.iter().map(|s| &**s).collect();
@@ -97,13 +129,23 @@ fn main() {
             println!("{}", message(res, Instant::now().duration_since(before).as_millis()));
             if write { std::fs::write(file.clone(), db.write()).expect(format!("Could not be written to {}", file).as_str()); }
         }
-        "test_btrs" => {
+        "btrs" => {
             let clock = Clock::new();
 
-            let mut c = BTRS::Calculator::new(4, 6);
-            let score = c.calc(&H::Pos::from("1cefm5.jryz"), &H::Player::X);
-
-            println!("BTRS-Berechnung für {} in {}ms abgeschlossen. Score = {}.", emph(String::from("1cefm5.jryz/X")), emph(clock.since().to_string()), emph(score.to_string()));
+            let mut db = BTRS::DB::new();
+            let score = BTRS::calc(
+                &mut db,
+                &H::Pos::from(args[1]),
+                &H::Player::from(args[2]),
+                args[3].to_string().parse::<u8>().expect(&format!("Unzulässiges Tiefenlimit: {}", args[3])),
+                args[4].to_string().parse::<u8>().expect(&format!("Unzulässiger compl-Grenzwert: {}", args[3]))
+            );
+            println!("{}", btrs_message(BTRS::CalcResult{
+                pos: args[1].to_string(),
+                p: args[2].to_string(),
+                entries: db.len(),
+                score
+            }, clock.since()));
         }
         "test_conc" => {
             let before = Instant::now();

@@ -812,6 +812,13 @@ pub mod BTRS {
     type Compl = u8;
     pub const SCORE_FINAL: Score = 13;
 
+    pub struct CalcResult {
+        pub pos: String,
+        pub p: String,
+        pub score: Score,
+        pub entries: usize
+    }
+
     pub struct DB {
         x: HashMap<Pos, (Score, u8, Compl)>,
         o: HashMap<Pos, (Score, u8, Compl)>
@@ -821,10 +828,10 @@ pub mod BTRS {
         /// Erstellt eine neue, leere `DB`.
         pub fn new() -> DB { DB { x: HashMap::new(), o: HashMap::new() } }
       
-        // Gibt die Gesamtzahl aller Einträge aus.
-        // pub fn len(&self) -> usize {
-        //     self.x.len() + self.o.len()
-        // }
+        /// Gibt die Gesamtzahl aller Einträge aus.
+        pub fn len(&self) -> usize {
+            self.x.len() + self.o.len()
+        }
        
         /// Gibt `Some(score)` zurück, wenn ein Eintrag mit derselben oder einer höheren Tiefe und demselben oder einem höheren compl-Grenzwert besteht.
         pub fn get(&self, pos: &Pos, p: &Player, tiefe: u8, compl: Compl) -> Option<Score> {
@@ -987,22 +994,22 @@ pub mod BTRS {
         // }
     }
 
-    pub struct Calculator {
-        pub tiefenlimit: u8,
-        pub compl_limit: Compl,
-        db: DB
-    }
-    impl Calculator {
-        pub fn new(tiefenlimit: u8, compl_limit: Compl) -> Calculator {
-            Calculator { tiefenlimit, compl_limit, db: DB::new() }
-        }
-        pub fn calc(&mut self, pos: &Pos, p: &Player) -> Score {
-            calc(&mut self.db, pos, p, self.tiefenlimit, self.compl_limit)
-        }
-        pub fn answer(&mut self, pos: Pos, p: &Player) -> Pos {
-            answer(&mut self.db, pos, p, self.tiefenlimit, self.compl_limit)
-        }
-    }
+    // pub struct Calculator {
+    //     pub tiefenlimit: u8,
+    //     pub compl_limit: Compl,
+    //     db: DB
+    // }
+    // impl Calculator {
+    //     pub fn new(tiefenlimit: u8, compl_limit: Compl) -> Calculator {
+    //         Calculator { tiefenlimit, compl_limit, db: DB::new() }
+    //     }
+    //     pub fn calc(&mut self, pos: &Pos, p: &Player) -> Score {
+    //         calc(&mut self.db, pos, p, self.tiefenlimit, self.compl_limit)
+    //     }
+    //     pub fn answer(&mut self, pos: Pos, p: &Player) -> Pos {
+    //         answer(&mut self.db, pos, p, self.tiefenlimit, self.compl_limit)
+    //     }
+    // }
 
 
 
