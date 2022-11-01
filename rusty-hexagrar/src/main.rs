@@ -5,6 +5,23 @@ use std::time::Instant;
 extern crate termion;
 use termion::{color, style};
 
+struct Clock {
+    start: Instant
+}
+impl Clock {
+    pub fn new() -> Clock { Clock { start: Instant::now() } }
+    pub fn since(&self) -> u128 { Instant::now().duration_since(self.start).as_millis() }
+    // pub fn reset(&mut self) { self.start = Instant::now(); }
+}
+
+fn emph(text: String) -> String {
+    format!("{}{}{}{}{}",color::Bg(color::Yellow),
+    style::Bold,
+    text,
+    style::Reset,
+    color::Bg(color::Reset))
+}
+
 fn message(res: T::CalcResult, duration: u128) -> String {
     format!(
         "Stellung {}{}{}{}{}{} mit Player {}{}{}{}{}{} in {}{} {}ms {}{} berechnet: {}{}  {:?}  {}{}   - {} neue Einträge. Aufruf-Profil: {:?}",
@@ -79,6 +96,14 @@ fn main() {
 
             println!("{}", message(res, Instant::now().duration_since(before).as_millis()));
             if write { std::fs::write(file.clone(), db.write()).expect(format!("Could not be written to {}", file).as_str()); }
+        }
+        "test_btrs" => {
+            let clock = Clock::new();
+
+            let mut c = BTRS::Calculator::new(4, 6);
+            let score = c.calc(&H::Pos::from("1cefm5.jryz"), &H::Player::X);
+
+            println!("BTRS-Berechnung für {} in {}ms abgeschlossen. Score = {}.", emph(String::from("1cefm5.jryz/X")), emph(clock.since().to_string()), emph(score.to_string()));
         }
         "test_conc" => {
             let before = Instant::now();

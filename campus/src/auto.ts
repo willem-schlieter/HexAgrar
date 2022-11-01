@@ -1,6 +1,8 @@
 import H from "./core";
 import T from "./togre";
 import { later, random, wait } from "./tools";
+import { BTRS } from "wasm";
+let btrs = BTRS.new(6, 5);
 
 export interface Info {
     display: boolean;
@@ -9,8 +11,8 @@ export interface Info {
     detailKeys?: string[];
     detailTypes?: string[];
 }
-export type Autocode = "rt" | "rtf" | "sea" | "kea400_sea" | "ezza100" | "ezza400" | "hybrid_TE" | "kea600_sea" | "trs_mat";
-export const autocodes = ["rt", "rtf", "sea", "kea400_sea", "ezza100", "ezza400", "hybrid_TE", "kea600_sea", "trs_mat"];
+export type Autocode = "rt" | "rtf" | "sea" | "kea400_sea" | "ezza100" | "ezza400" | "hybrid_TE" | "kea600_sea" | "trs_mat" | "btrs";
+export const autocodes = ["rt", "rtf", "sea", "kea400_sea", "ezza100", "ezza400", "hybrid_TE", "kea600_sea", "trs_mat", "btrs"];
 export type Automat = (stellung: H.Numpos, player: H.Player, options: H.Option[], detail?: {[index: string]: any}) => H.Option | undefined;
 
 export const K = {
@@ -104,17 +106,28 @@ export const A: { [index: string]: Automat } = {
         });
     },
     hybrid_TE(s, p, o) {
-        if (H.complex(s) > 8) return A.kea400_sea(s, p, o);
+        if (H.complex(s) > 9) return A.kea400_sea(s, p, o);
         else {
-            console.log("Spiele TOGRE-vollständig")
-            const t = T.stdDB.calc(H.convert.c(s), p, "pure", true).t;
-            console.log(t);
+            // const t = T.stdDB.calc(H.convert.c(s), p, "pure", true).t;
+            // console.log(t);
+            
+            // const bf = bestFraction(o, p);
+            // // console.log("bestFraction sagt: Die besten Optionen haben TOGRE " + bf[1]);
+            
+            // if (bf[1] === p.c) return K.random(bf[0]);
+            // else return A.kea400_sea(s, p, bf[0]);
+            
+            console.log("Spiele TOGRE-vollständig");
+            const t = T.rustyTogre(s, p);
+            console.log("TOGRE der aktuellen Stellung: ", t);
 
-            const bf = bestFraction(o, p);
-            // console.log("bestFraction sagt: Die besten Optionen haben TOGRE " + bf[1]);
-
-            if (bf[1] === p.c) return K.random(bf[0]);
-            else return A.kea400_sea(s, p, bf[0]);
+            let remis: H.Option[] = [];
+            for (let option of o) {
+                const t = T.rustyTogre(option.ziel, p.t);
+                if (t == p.c) return option;
+                else if (t === "R") remis.push(option);
+            }
+            return remis[0] || o[0];
         }
     },
     trs_mat(s, p, o) {
@@ -143,6 +156,14 @@ export const A: { [index: string]: Automat } = {
             else return (Math.random() < 0.5) ? curr : prev;
         }).opt;
 
+    },
+    btrs(s, p, o) {
+        const result = H.convert.c(H.convert.normalize(H.convert.n(btrs.answer(H.convert.c(s), p.c))));
+        const res = o.filter(option => {
+                return H.convert.c(H.convert.normalize(option.ziel)) === result;
+        });
+        if (res.length) return res[0];
+        else throw new Error(`BTRS gab keine brauchbare Antwort. ${H.convert.c(H.convert.normalize(H.convert.n(result)))} ist nicht in ${o} enthalten.`);
     }
 }
 
@@ -219,6 +240,11 @@ export const info: {[index in Autocode]: Info} = {
         display: true,
         title: "Materieler TRS-Automat",
         description: "Absolut tiefenlimitiertes Scoring auf Grundlage des Figurenüberhangs."
+    },
+    btrs: {
+        display: true,
+        title: "Bedingt tiefenlimitiertes Scoring mit optionaler Vollberechnung (TOGRE).",
+        description: "Rechnet zB 6 Züge in die Tiefe und beurteilt die dortigen Folgestellungen anhand eines kriterialen Scorings. Wird jedoch eine Komplexitätsgrenze unterschritten, wird TOGRE-vollständig gerechnet."
     }
 }
 
@@ -307,10 +333,6 @@ export function runSync (stellung: H.Numpos, p: H.Player, auto: Autocode, detail
 }
 
 export default async function run (stellung: H.Numpos, p: H.Player, auto: Autocode, wartezeit?: number): Promise<H.Option> {
-    const wasm = await import("wasm");
-    let test = wasm.WasmTest.new(19);
-    test.greet();
-    
     const o = H.getOptions(stellung, p);
     if (typeof o === "string") throw new Error("run bzw. ein Automat wurde für eine syntaktisch finale Stellung aufgerufen. Das sollte vermieden werden.");
     await wait(wartezeit || 0);

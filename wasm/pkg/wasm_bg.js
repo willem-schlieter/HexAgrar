@@ -96,6 +96,15 @@ function passStringToWasm0(arg, malloc, realloc) {
     return ptr;
 }
 
+let cachedInt32Memory0 = new Int32Array();
+
+function getInt32Memory0() {
+    if (cachedInt32Memory0.byteLength === 0) {
+        cachedInt32Memory0 = new Int32Array(wasm.memory.buffer);
+    }
+    return cachedInt32Memory0;
+}
+
 function addHeapObject(obj) {
     if (heap_next === heap.length) heap.push(heap.length + 1);
     const idx = heap_next;
@@ -104,14 +113,84 @@ function addHeapObject(obj) {
     heap[idx] = obj;
     return idx;
 }
+/**
+*/
+export class BTRS {
 
-let cachedInt32Memory0 = new Int32Array();
+    static __wrap(ptr) {
+        const obj = Object.create(BTRS.prototype);
+        obj.ptr = ptr;
 
-function getInt32Memory0() {
-    if (cachedInt32Memory0.byteLength === 0) {
-        cachedInt32Memory0 = new Int32Array(wasm.memory.buffer);
+        return obj;
     }
-    return cachedInt32Memory0;
+
+    __destroy_into_raw() {
+        const ptr = this.ptr;
+        this.ptr = 0;
+
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_btrs_free(ptr);
+    }
+    /**
+    * @returns {number}
+    */
+    get d() {
+        const ret = wasm.__wbg_get_btrs_d(this.ptr);
+        return ret;
+    }
+    /**
+    * @param {number} arg0
+    */
+    set d(arg0) {
+        wasm.__wbg_set_btrs_d(this.ptr, arg0);
+    }
+    /**
+    * @param {number} tiefenlimit
+    * @param {number} compl
+    * @returns {BTRS}
+    */
+    static new(tiefenlimit, compl) {
+        const ret = wasm.btrs_new(tiefenlimit, compl);
+        return BTRS.__wrap(ret);
+    }
+    /**
+    * @param {string} poscode
+    * @param {string} p
+    * @returns {string}
+    */
+    answer(poscode, p) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passStringToWasm0(poscode, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            const len0 = WASM_VECTOR_LEN;
+            const ptr1 = passStringToWasm0(p, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.btrs_answer(retptr, this.ptr, ptr0, len0, ptr1, len1);
+            var r0 = getInt32Memory0()[retptr / 4 + 0];
+            var r1 = getInt32Memory0()[retptr / 4 + 1];
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_free(r0, r1);
+        }
+    }
+    /**
+    * @param {string} poscode
+    * @param {string} p
+    * @returns {number}
+    */
+    calc(poscode, p) {
+        const ptr0 = passStringToWasm0(poscode, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(p, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.btrs_calc(this.ptr, ptr0, len0, ptr1, len1);
+        return ret;
+    }
 }
 /**
 */
@@ -156,46 +235,6 @@ export class TogreCalculator {
         return ret;
     }
 }
-/**
-*/
-export class WasmTest {
-
-    static __wrap(ptr) {
-        const obj = Object.create(WasmTest.prototype);
-        obj.ptr = ptr;
-
-        return obj;
-    }
-
-    __destroy_into_raw() {
-        const ptr = this.ptr;
-        this.ptr = 0;
-
-        return ptr;
-    }
-
-    free() {
-        const ptr = this.__destroy_into_raw();
-        wasm.__wbg_wasmtest_free(ptr);
-    }
-    /**
-    * @param {number} value
-    * @returns {WasmTest}
-    */
-    static new(value) {
-        const ret = wasm.wasmtest_new(value);
-        return WasmTest.__wrap(ret);
-    }
-    /**
-    */
-    greet() {
-        wasm.wasmtest_greet(this.ptr);
-    }
-}
-
-export function __wbg_alert_e63a4c41bbd7a3e9(arg0, arg1) {
-    alert(getStringFromWasm0(arg0, arg1));
-};
 
 export function __wbg_new_abda76e883ba8a5f() {
     const ret = new Error();

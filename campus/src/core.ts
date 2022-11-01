@@ -61,6 +61,12 @@ namespace H {
         export function c (stellung: H.Numpos): string {
             return stellung.map(b => b.map(d => d.toString(36)).join("")).join(".");
         }
+        export function normalize (stellung: H.Numpos): H.Numpos {
+            return [
+                stellung[0].sort(),
+                stellung[1].sort()
+            ] as H.Numpos;
+        }
     }
 
     /**Gibt das `Feld` auf diesem Brett zurück.
@@ -136,12 +142,9 @@ namespace H {
             console.log("stellung = ", stellung, `from = ${from} to = ${to} p = ${p.c}`);
             throw new Error(`numposZiehen(${convert.c(stellung)}, ${from}, ${to}, ${p.c})` + ": Der ziehende Spieler p steht nicht auf dem Startfeld.");
         }
-        const neueStellung = stellung.map(b => b.filter(feldnummer => feldnummer !== from && feldnummer !== to));
+        const neueStellung = stellung.map(b => b.filter(feldnummer => feldnummer !== from && feldnummer !== to)) as H.Numpos;
         neueStellung[p.i].push(to);
-        return [
-            neueStellung[0].sort(),
-            neueStellung[1].sort()
-        ];
+        return H.convert.normalize(neueStellung);
     }
 
     /**Welche Zielfelder sind von einem Feld aus erreichbar?

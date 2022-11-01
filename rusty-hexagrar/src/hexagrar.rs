@@ -2,12 +2,11 @@
 */
 
 pub const INFO: &str = "Ausgangsversion - Seit Oktober 2022 wird nur noch die maintained.";
-pub const SCORE_FINAL: i8 = 13;
 
 #[allow(non_snake_case)]
 pub mod H {
 
-    use super::SCORE_FINAL;
+    use super::BTRS;
 
     const FIELDS: [char; 36] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
 
@@ -102,7 +101,7 @@ pub mod H {
             else {
                 let mut res: [Option<i8>; 4] = [None, None, None, None];
                 // Nur weiter, wenn Figur nicht in der letzten Reihe.
-                if ! (p.b() && feld > 29) || (! p.b() && feld < 6) {
+                if ! (p.is_x() && feld > 29) || (! p.is_x() && feld < 6) {
                     // Zunächst die potenziellen Zielfelder bestimmen.
                     let ziele = (
                         // Schritt
@@ -166,7 +165,7 @@ pub mod H {
             let mut res: Vec<Pos> = vec![];
             for feld in self.of(p) {
                 // Nur weiter, wenn Figur nicht in der letzten Reihe.
-                if ! (p.b() && *feld > 29) || (! p.b() && *feld < 6) {
+                if ! (p.is_x() && *feld > 29) || (! p.is_x() && *feld < 6) {
                     // Zunächst die potenziellen Zielfelder bestimmen.
                     let ziele = (
                         // Schritt
@@ -238,10 +237,13 @@ pub mod H {
                 Player::O => 'O'
             }
         }
-        pub fn b(&self) -> bool {
+        pub fn is_x(&self) -> bool {
             self == &Player::X
         }
-        pub fn score(&self) -> i8 {
+        pub fn is_o(&self) -> bool {
+            self == &Player::O
+        }
+        pub fn score(&self) -> BTRS::Score {
             self.togre().score()
         }
         pub fn from(code: &str) -> Player {
@@ -271,14 +273,14 @@ pub mod H {
         }
         pub fn score(&self) -> i8 {
             match self {
-                Togre::X => SCORE_FINAL,
-                Togre::O => -1 * SCORE_FINAL,
+                Togre::X => BTRS::SCORE_FINAL,
+                Togre::O => -1 * BTRS::SCORE_FINAL,
                 Togre::R => 0
             }
         }
         pub fn from_score(score: i8) -> Option<Togre> {
-            if score == SCORE_FINAL { Some(Togre::X) }
-            else if score == SCORE_FINAL * -1 { Some(Togre::O) }
+            if score == BTRS::SCORE_FINAL { Some(Togre::X) }
+            else if score == BTRS::SCORE_FINAL * -1 { Some(Togre::O) }
             else if score == 0 { Some(Togre::R) }
             else { None }
         }
@@ -472,8 +474,6 @@ pub mod T {
             res
         }
     }
-
-    
 
     fn get_conc(db_mutex: Arc<Mutex<DB>>, pos: &H::Pos, p: &H::Player) -> (Option<H::Togre>, Arc<Mutex<DB>>) {
         let mut db = db_mutex.lock().unwrap();
@@ -712,13 +712,12 @@ pub mod Auto {
 
     use super::H::*;
     use super::T;
-    // use super::SCORE_FINAL;
-    const TRS_TIEFE: u8 = 4;
+    const BTRS_TIEFE: u8 = 4;
     pub fn answer(pos: Pos, p: &Player) -> Pos {
         let mut options = pos.folgestellungen(p);
-        let mut best_ix = (0, i(&options[0], &p.not(), TRS_TIEFE));
+        let mut best_ix = (0, i(&options[0], &p.not(), BTRS_TIEFE));
         for ix in 1..options.len() {
-            let s = i(&options[ix], &p.not(), TRS_TIEFE);
+            let s = i(&options[ix], &p.not(), BTRS_TIEFE);
             if (p == &Player::X && s > best_ix.1) || (p == &Player::O && s < best_ix.1) {
                 best_ix = (ix, s);
             }
@@ -785,7 +784,7 @@ pub mod Auto {
                 // Wir gehen erstmal vom Schlechtesten aus…
                 let mut best = p.not().score();
                 // …und korrigieren den Wert dann sukzessive.
-                if p.b() { for score in scores { best = score.max(best) } }
+                if p.is_x() { for score in scores { best = score.max(best) } }
                 else { for score in scores { best = score.min(best) } }
                 return best;
             }
@@ -802,4 +801,192 @@ pub mod Auto {
             }
         }
     }
+}
+
+#[allow(non_snake_case)]
+pub mod BTRS {
+    use std::collections::HashMap;
+    use super::H::*;
+
+    pub type Score = i8;
+    type Compl = u8;
+    pub const SCORE_FINAL: Score = 13;
+
+    pub struct DB {
+        x: HashMap<Pos, Score>,
+        o: HashMap<Pos, Score>
+    }
+    impl DB {
+        /// Erstellt eine neue, leere `DB`.
+        pub fn new() -> DB { DB { x: HashMap::new(), o: HashMap::new() } }
+        /// Gibt die Gesamtzahl aller Einträge aus.
+        // pub fn len(&self) -> usize {
+        //     self.x.len() + self.o.len()
+        // }
+        pub fn get(&self, pos: &Pos, p: &Player) -> Option<Score> {
+            match (if *p == Player::X { &self.x } else { &self.o }).get(&pos) {
+                Some(t) => Some(*t),
+                None => None
+            }
+        }
+        pub fn set(&mut self, pos: Pos, p: &Player, score: Score) {
+            if let Some(old_score) = (if p.is_x() { &mut self.x } else { &mut self.o }).insert(pos, score) {
+                if old_score != score {
+                    // Pos kann nicht geloggt werden, weil es bereits in HashMap.insert gemoved wurde. Für den Fall, dass dieser Fehler auftritt, am besten pos clonen und Fehler rekonstruieren.
+                    panic!("BTRS.DB.set: Die Set-Anfrage [Pos moved]/{}={} wiederspricht einem bereits existenten Eintrag: {}. Das weist auf einen Logik-Fehler hin.", p.c(), score, old_score);
+                }
+            };
+        }
+    }
+
+    /// Gibt die Folgestellung von `pos` mit dem für `p` besten BTRS-Score zurück.
+    fn answer(db: &mut DB, pos: Pos, p: &Player, tiefe: u8, compl_limit: Compl) -> Pos {
+        match pos.won() {
+            Some(_) => pos,
+            None => {
+                let mut options = pos.folgestellungen(p);
+                if options.len() == 0 { pos } else {
+                    let mut best = (0, p.not().score());
+                    for ix in 0..options.len() {
+                        if best.1 == p.score() { break; }
+                        let s = match db.get(&options[ix], &p.not()) {
+                            Some(saved) => saved,
+                            None => i(db, &options[ix], &p.not(), tiefe, compl_limit)
+                        };
+                        if (p == &Player::X && s > best.1) || (p == &Player::O && s < best.1) {
+                            best = (ix, s);
+                        }
+                    }
+                    options.remove(best.0)
+                }
+            }
+        }
+    }
+
+    /// Berechnet den BTRS-Score von `pos` mit gegebenen Tiefen- und Compl-Limits.
+    fn calc(db: &mut DB, pos: &Pos, p: &Player, tiefe: u8, compl_limit: Compl) -> Score {
+        if let Some(won) = pos.won() {
+            won.score()
+        } else if let Some(score) = db.get(pos, p) {
+            score
+        } else { i(db, pos, p, tiefe, compl_limit)}
+    }
+    
+    /// Rekursive BTRS-Funktion.
+    /// 
+    /// **ACHTUNG**: Vor dem Aufruf ***immer*** `pos` auf syntaktische, nicht-neutrale Finalität (`.won()`) prüfen. `i` prüft nur syntaktisch *Remis*.
+    /// 
+    /// **ACHTUNG**: Vor dem Aufruf ***immer*** prüfen, ob `pos` schon gespeichert ist. `i` sucht in der DB nur nach den Folgestellungen von `pos`. Daher kleine Performance-Verbesserung möglich.
+    fn i(db: &mut DB, pos: &Pos, p: &Player, tiefe: u8, compl_limit: Compl) -> Score {
+        // `pos` ist nicht final gewonnen (siehe Doc).
+
+        // Wenn das Tiefenlimit noch nicht erreicht ist, berechnen wir den Score rekursiv.
+        if tiefe != 0 {
+            // Dazu ermitteln wir die Scores der Folgestellungen und speichern sie hier:
+            let mut scores: Vec<i8> = vec![]; // …um am Ende den besten zurückzugeben.
+            // Wir rechnen in zwei Stufen. Stellungen, die aufgeschoben werden, werden hier gespeichert.
+            let mut later: Vec<Pos> = vec![];
+
+            // Wir iterieren zunächst über die möglichen Startfelder.
+            for startfeld in pos.of(p) {
+
+                // Für jedes Startfeld iterieren wir über die vier Zielfeld-Optionen.
+                for zielfeld_option in pos.zielfelder(*startfeld, p) {
+                    // Wenn das Zielfeld infrage kommt, man also darauf ziehen kann…
+                    if let Some(zielfeld) = zielfeld_option {
+                        // …erzeugen wir zunächst die resultierende Stellung.
+                        let newpos = pos.zug_anwenden(*startfeld, zielfeld, p);
+                        // Wir prüfen, ob der Score bereits gespeichert ist:
+                        let score: Option<Score> = match db.get(&newpos, &p.not()) {
+                            Some(saved) => Some(saved),
+                            None => {
+                                // Wenn nicht, prüfen wir, ob newpos final ist.
+                                match newpos.won() {
+                                    Some(won) => Some(won.score()),
+                                    // Wenn nicht, wird zunächst None gesichert.
+                                    None => None
+                                }
+                            }
+                        };
+                        // Hat die Prüfung oben etwas ergeben?
+                        if let Some(s) = score {
+                            // Wenn `newpos` togre-positiv ist, wird die Berechnung abgrebrochen - die beste Option ist gefunden!
+                            if s == p.score() { return s; }
+                            // Sonst wird der bekannte Score einfach protokolliert.
+                            else { scores.push(s); }
+                        }
+                        // Wenn die Prüfung nichts ergeben hat, muss newpos später berechnet werden.
+                        else { later.push(newpos); }
+                    }
+                }
+            }
+           
+            // Jetzt haben wir alle möglichen Folgestellungen ein erstes Mal inspiziert.
+                // Waren sie gewonnen/verloren oder der Score bereits in der DB, so finden wir diesen in `scores`.
+                // Wenn nicht, so wurden sie in `later` gespeichert und werden nun eine nach der anderen berechnet.
+            for late in later {
+                // Wir errechnen den Score dieser Folgestellung.
+                let score: i8 = i(db, &late, &p.not(), tiefe - 1, compl_limit);
+                db.set(late, &p.not(), score);
+                if score == p.score() { return score; }
+                else { scores.push(score); }
+            }
+
+            // Nun wurde jede Folgestellung abschließend inspiziert. Wenn keine Scores gespeichert wurden, gibt es offenbar keine Folgestellungen. `pos` ist also final remis.
+            if scores.len() == 0 { return 0; }
+            // Sonst muss der beste gespeicherte Score returned werden.
+            else {
+                // Wir gehen erstmal vom Schlechtesten aus…
+                let mut best = p.not().score();
+                // …und korrigieren den Wert dann sukzessive hoch.
+                if p.is_x() { for score in scores { best = score.max(best) } }
+                else { for score in scores { best = score.min(best) } }
+                return best;
+            }
+        }
+        
+        // Wenn das Tiefenlimit erreicht ist, wird der Score kriterial oder ausschöpfend (quasi-TOGRE) berechnet.
+        else {
+            // Wenn die Stellung zu komplex ist, wird sie kriterial beurteilt.
+            if compl(pos) > compl_limit {
+                return crit_score(pos);
+            }
+            // Sonst einfach weiterrechnen, aber ohne Tiefenlimit.
+            else {
+                return i(db, pos, p, 100, compl_limit);
+            }
+        }
+    }
+
+    /// Gibt die Komplexität von `pos` für die BTRS-Berechnung zurück.
+    fn compl(pos: &Pos) -> Compl {
+        pos.compl() as Compl
+    }
+    fn crit_score(pos: &Pos) -> Score {
+        (pos.0.len() - pos.1.len()) as i8
+        // match (pos.0.len() - pos.1.len()).try_into<>() {
+        //     Ok(_) => todo!(),
+        //     Err(_) => todo!(),
+        // }
+    }
+
+    pub struct Calculator {
+        pub tiefenlimit: u8,
+        pub compl_limit: Compl,
+        db: DB
+    }
+    impl Calculator {
+        pub fn new(tiefenlimit: u8, compl_limit: Compl) -> Calculator {
+            Calculator { tiefenlimit, compl_limit, db: DB::new() }
+        }
+        pub fn calc(&mut self, pos: &Pos, p: &Player) -> Score {
+            calc(&mut self.db, pos, p, self.tiefenlimit, self.compl_limit)
+        }
+        pub fn answer(&mut self, pos: Pos, p: &Player) -> Pos {
+            answer(&mut self.db, pos, p, self.tiefenlimit, self.compl_limit)
+        }
+    }
+
+
+
 }
