@@ -1,6 +1,8 @@
 /*
 */
 
+#![allow(dead_code)]
+
 pub const INFO: &str = "Ausgangsversion - Seit Oktober 2022 wird nur noch die maintained.";
 
 #[allow(non_snake_case)]
@@ -289,7 +291,7 @@ pub mod H {
 
 #[allow(non_snake_case)]
 pub mod T {
-    use std::{collections::HashMap, thread};
+    use std::{collections::HashMap, thread, time::Instant};
     use super::H;
     use H::{ Togre, Pos, Player };
     use std::sync::{Arc, Mutex};
@@ -351,7 +353,7 @@ pub mod T {
                 None => { }
             }
         }
-        pub fn calc(&mut self, pos: &Pos, p: H::Player, full: bool) -> CalcResult {
+        pub fn calc(&mut self, pos: &Pos, p: &H::Player, full: bool) -> CalcResult {
             let old_len = self.len();
             let t = match pos.won() {
                 Some(p) => p.togre(),
@@ -473,6 +475,16 @@ pub mod T {
             ].join("#")));
             res
         }
+    
+        /// Importiert sämtliche Inhalte der DB `other` in diese DB.
+        pub fn import(&mut self, other: DB) {
+            for entry in other.x.into_iter() {
+                self.x.insert(entry.0, entry.1);
+            }
+            for entry in other.o.into_iter() {
+                self.o.insert(entry.0, entry.1);
+            }
+        }
     }
 
     fn get_conc(db_mutex: Arc<Mutex<DB>>, pos: &H::Pos, p: &H::Player) -> (Option<H::Togre>, Arc<Mutex<DB>>) {
@@ -482,7 +494,7 @@ pub mod T {
         (res, db_mutex)
     }
 
-    fn i_conc(db_mutex: Arc<Mutex<DB>>, pos: &H::Pos, p: &H::Player, thread_nr: usize, log: bool) -> (H::Togre, Arc<Mutex<DB>>) {
+    fn i_conc(db_mutex: Arc<Mutex<DB>>, pos: &H::Pos, p: &H::Player, thread_nr: u8, log: bool) -> (H::Togre, Arc<Mutex<DB>>) {
         // pos ist garantiert nicht gewonnen und nicht in der DB. (Denn bei rekursivem Aufruf wurde dies schon vorher geprüft, s.u., und der manuelle Aufruf sollte über calc erfolgen, wo dies auch geschieht, s.o.)
         
         // Wir werden das Mutex öfters an eine Funktion übergeben und es zurückbekommen. Um es dann weiter zu benutzen, müssen wir es wieder speichern. Da Parameter immutable sind, müssen wir db_mutex mutable moven.
@@ -534,7 +546,8 @@ pub mod T {
         }
         if is_r || is_remis { (H::Togre::R, mutex) } else { (p.not().togre(), mutex) }
     }
-    pub fn calc_conc(db: &mut DB, pos: &Pos, p: H::Player) -> CalcResult {
+    
+    pub fn calc_conc(db: &mut DB, pos: &Pos, p: H::Player, threads: u8) -> CalcResult {
         let old_len = db.len();
         let t = match pos.won() {
             Some(p) => p.togre(),
@@ -542,29 +555,48 @@ pub mod T {
                 match db.get(&pos, &p) {
                     Some(t) => t,
                     None => {
-                        let mut folgestellungen = pos.folgestellungen(&p);
-                        let db_arc = Arc::new(Mutex::new(DB::new()));
-                        let mut handles = vec![];
-                        for ix in 0..folgestellungen.len() {
-                            let db_mutex = Arc::clone(&db_arc);
-                            let stellung = folgestellungen.remove(0);
-                            let handle = thread::spawn(move || {
-                                println!("#{}: Started.", ix);
-                                i_conc(db_mutex, &stellung, &p.not(), ix, true);
-                                println!("#{}: Completed.", ix);
-                            });
-                            handles.push(handle);
+                        // pos ist nicht gewonnen und nicht in der DB.
+                        let folgestellungen = pos.folgestellungen(&p);
+                        if folgestellungen.len() == 0 { Togre::R }
+                        else {
+                            // pos ist nicht remis.
+                            let db_arc = Arc::new(Mutex::new(DB::new()));
+                            let fs_arc = Arc::new(Mutex::new(folgestellungen));
+                            let mut handles = vec![];
+                            for ix in 0..threads {
+                                let mut db_mutex = Arc::clone(&db_arc);
+                                let fs_mutex = Arc::clone(&fs_arc);
+                                handles.push(thread::spawn(move || {
+                                    println!("#{}: Start.", ix);
+                                    loop {
+                                        let mut fs = fs_mutex.lock().unwrap();
+                                        if fs.len() == 0 {
+                                            println!("#{}: FS ist leer. Beende Thread.", ix);
+                                            drop(fs);
+                                            break;
+                                        } else {
+                                            println!("#{}: Neue Berechnung.", ix);
+                                            let s = fs.remove(0);
+                                            drop(fs);
+                                            db_mutex = i_conc(db_mutex, &s, &p.not(), ix, false).1;
+                                        }
+                                    }
+                                    println!("#{}: Ende.", ix);
+                                }));
+                            }
+
+                            for handle in handles {
+                                handle.join().unwrap();
+                            }
+                            // Keine Ahnung, was das mit dem x soll. War ein Quick Fix.
+                            let x = db_arc.lock().unwrap().calc(&pos, &p, false).t;
+                            x
                         }
-                        for handle in handles {
-                            handle.join().unwrap();
-                        }
-                        // Keine Ahnung, was das mit dem x soll. War ein Quick Fix.
-                        let x = db_arc.lock().unwrap().calc(&pos, p, false).t;
-                        x
                     }
                 }
             }
         };
+
         db.set(Pos::from(&pos.write()), &p, &t);
         CalcResult {
             pos: pos.write(),
@@ -572,6 +604,96 @@ pub mod T {
             t,
             entries: db.len() - old_len,
             times: db.times
+        }
+    }
+
+    pub fn calc_para(root_db: &mut DB, pos: &Pos, p: Player, threads: u8) -> CalcResult {
+        let start = Instant::now();
+        let old_len = root_db.len();
+        let t = match pos.won() {
+            Some(p) => p.togre(),
+            None => {
+                match root_db.get(&pos, &p) {
+                    Some(t) => t,
+                    None => {
+                        // pos ist nicht gewonnen und nicht in der DB.
+                        let folgestellungen = pos.folgestellungen(&p);
+                        if folgestellungen.len() == 0 { Togre::R }
+                        else {
+                            // pos ist nicht remis.
+
+                            // Statt der Folgestellungen 1. Grades werden die 2. Grades berechnet. Das ermöglicht es, mehr Threads aufzumachen als die Anzahl der direkten Folgestellungen.
+                            // Hoffnung war: Noch mehr Threads -> Wird schneller.
+                            // Leider anscheinend nicht der Fall (jedenfalls bei 40 Threads wesentlich langsamer als bei 1.)
+                            // Wenn ich das wieder rausnheme, nicht vergessen: Im Thread muss dann mit p.not gerechnet werden, weil ja dann Fs. 1. statt 2. Grades.
+                            let mut rechenset = vec![];
+                            for fs in folgestellungen {
+                                for ffs in fs.folgestellungen(&p.not()) {
+                                    rechenset.push(ffs);
+                                }
+                            }
+
+                            // let mut rechensets = vec![(folgestellungen, p.not().is_x())];
+                            // while rechensets[rechensets.len() - 1].0.len() < threads.into() {
+                            //     let mut new: (Vec<Pos>, bool) = (vec![], ! rechensets[rechensets.len() - 1].1);
+                            //     let p = if new.1 { Player::X } else { Player::O };
+                            //     for s in rechensets[rechensets.len() - 1].0 {
+                            //         for fs in s.folgestellungen(&p) {
+                            //             new.0.push(s);
+                            //         }
+                            //     }
+                            // }
+
+                            let fs_arc = Arc::new(Mutex::new(rechenset));
+                            let mut handles = vec![];
+
+                            for ix in 0..threads {
+                                let fs_mutex = Arc::clone(&fs_arc);
+                                let mut thread_db = DB::new();
+                                handles.push(thread::spawn(move || {
+                                    println!("#{}: Start. [{}]", ix, Instant::now().duration_since(start).as_millis());
+                                    let before = Instant::now();
+                                    loop {
+                                        let mut fs = fs_mutex.lock().unwrap();
+                                        if fs.len() == 0 {
+                                            println!("#{}: FS ist leer. Beende Thread.", ix);
+                                            drop(fs);
+                                            break;
+                                        } else {
+                                            println!("#{}: Neue Berechnung. [{}]", ix, Instant::now().duration_since(start).as_millis());
+                                            let s = fs.remove(0);
+                                            drop(fs);
+                                            let before = Instant::now();
+                                            thread_db.calc(&s, &p, false);
+                                            println!("#{}: {} in {}ms berechnet. [{}]", ix, s.write(), Instant::now().duration_since(before).as_millis(), Instant::now().duration_since(start).as_millis());
+                                        }
+                                    }
+                                    println!("#{}: Ende nach {}ms. [{}]", ix, Instant::now().duration_since(before).as_millis(), Instant::now().duration_since(start).as_millis());
+                                    return thread_db;
+                                }));
+                            }
+                            println!("Alle Threads gestartet. [{}]", Instant::now().duration_since(start).as_millis());
+
+                            for ix in 0..handles.len() {
+                                println!("Warte auf Thread #{}. [{}]", ix, Instant::now().duration_since(start).as_millis());
+                                root_db.import(handles.remove(0).join().unwrap());
+                            }
+                            println!("Alle Threads sind fertig. [{}]", Instant::now().duration_since(start).as_millis());
+                            root_db.calc(&pos, &p, false).t
+                        }
+                    }
+                }
+            }
+        };
+
+        root_db.set(Pos::from(&pos.write()), &p, &t);
+
+        CalcResult {
+            pos: pos.write(),
+            p: p.c(),
+            t,
+            entries: root_db.len() - old_len,
+            times: root_db.times
         }
     }
 

@@ -123,7 +123,7 @@ fn main() {
             db.set(H::Pos::from("8k.l"), &H::Player::O, &H::Togre::X);
 
             let before = Instant::now();
-            let res = db.calc(&H::Pos::from(args[1]), H::Player::from(args[2]), args[3] == "-full");
+            let res = db.calc(&H::Pos::from(args[1]), &H::Player::from(args[2]), args[3] == "-full");
 
 
             println!("{}", message(res, Instant::now().duration_since(before).as_millis()));
@@ -148,8 +148,13 @@ fn main() {
             }, clock.since()));
         }
         "test_conc" => {
+            let threads = args[1].parse::<u8>().expect(format!("Invalid thread count: {}", args[1]).as_str());
+
             let before = Instant::now();
-            let res = T::calc_conc(&mut T::DB::new(), &H::Pos::from("1234.vwxy"), H::Player::X);
+
+            // let res = T::calc_conc(&mut T::DB::new(), &H::Pos::from("1234.vwxy"), H::Player::X, 8);
+            let res = T::calc_para(&mut T::DB::new(), &H::Pos::from("1234.vwxy"), H::Player::X, threads);
+
             println!("{}", message(res, Instant::now().duration_since(before).as_millis()));
 
         }
@@ -213,7 +218,7 @@ fn main() {
 
             for _ in 0..unit_size {
                 if let Some((pos, p)) = hk.c.drop_one() {
-                    let t = tdb.calc(&pos, p, false).t;
+                    let t = tdb.calc(&pos, &p, false).t;
                     hk_tdb.set(pos, &p, &t);
                 } else { break; }
             }

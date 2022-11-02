@@ -2,5 +2,6 @@
 /campus/node_modules
 Cargo.lock
 /rusty-hexagrar/target
+/rusty-hexagrar/run
 /wasm/target
 /wasm/tests
