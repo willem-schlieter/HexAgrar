@@ -1,0 +1,4 @@
+# # [profile.release]
+# rustflags = [
+#     "-C", "link-args=-Wl,-stack_size,0x80000000",
+# ]
