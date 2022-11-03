@@ -1,6 +1,6 @@
 pub mod hexagrar;
 use hexagrar::*;
-use H::{Pos};
+use H::Pos;
 use std::time::Instant;
 
 extern crate termion;
@@ -245,7 +245,7 @@ fn main() {
 
             std::fs::write(path, hk.write(format!("Zugtiefen-Halbkries ('HK2'): {}/{} (tiefe={})", poscode, p.c(), tiefe))).expect(format!("Datei konnte nicht beschrieben werden: {}", path).as_str());
         }
-        "step" => {
+        "stepALT" => {
             println!("Willkommen bei TOGREstep!\nLade Dateien…");
 
             let mut clock = Clock::new();
@@ -343,6 +343,97 @@ fn main() {
                 } else {
                     println!("Die HKDB ist leer - Die Berechnung ist abgeschlossen! Herzlichen Glückwunsch!");
                     break 'l;
+                }
+            }
+        }
+
+        "step" => {
+            println!("Willkommen bei TOGREstep!\nLade Dateien…");
+
+            let mut clock = Clock::new();
+
+            // Bedingung, damit Einträge dauerhaft in der helper_DB gespeichert werden.
+            let helper_condition = |p: &Pos| -> bool {
+                // Sind mehr als 7 Figuren auf dem Feld?
+                p.0.len() + p.1.len() > 7
+            };
+
+            let mut hk = HK::Halbkreis2::from(read_file("step_hk.hkdb"));
+            let mut helper_db = T::DB::from(read_file("step_helperdb.togredb"));
+            let mut result_db = T::DB::from(read_file("step_result.togredb"));
+            let mut total_time = read_file("step_stats").parse::<u128>().expect("Der Inhalt von step_stats ist ungültig.");
+
+            'l: loop {
+                let mut input = String::from("");
+                while input != "z" && input != "q" {
+                    println!("\nWas möchtest du tun?");
+                    println!("[z]eitlang rechnen    NOCH NICHT: [s]tatistik anzeigen    [q]uit");
+                    input = read_line();
+                }
+
+                match input.as_str() {
+                    "z" => {
+                        // Zeit, die gerechnet werden soll, in ms.
+                        let mut time: u128 = 0;
+                        // Zeit, die schon gerechnet wurde, in ms.
+                        let mut elapsed: u128 = 0;
+                        // Beendete Berechnungen.
+                        let mut times: u32 = 0;
+
+                        // Zeit lesen
+                        'w: while time == 0 {
+                            println!("Wie viele Sekunden soll gerechnet werden?");
+                            if let Ok(t) = read_line().parse::<u128>() {
+                                time = t * 1000;
+                                break 'w;
+                            } else {
+                                println!("Bitte gib eine gültige Zahl ein!");
+                            }
+                        }
+                        
+                        while elapsed < time {
+                            times += 1;
+                            if let Some(current) = hk.c.drop_one() {
+                                println!("\nBerechne {}/{}…", &current.0.write(), current.1.c());
+                                clock.reset();
+                                let res = helper_db.calc(&current.0, &current.1, false);
+                                result_db.set(current.0, &current.1, &res.t);
+                                println!("{}", message(res, clock.since()));
+                                elapsed += clock.since();
+
+                                if times % 10 == 0 {
+                                    println!("Zur Sicherheit zwischendurch speichern…");
+                                    write_file("step_hk.hkdb", hk.write(String::from("TOGREstep Session.")));
+                                    write_file("step_result.togredb", result_db.write());
+                                    write_file("step_helperdb.togredb", T::DB::new().import_filtered(&helper_db, helper_condition).write());
+                                }
+
+                            } else {
+                                println!("{}", emph(String::from("Die HKDB ist leer - Die Berechnung ist abgeschlossen! Herzlichen Glückwunsch!")));
+                                break 'l;
+                            }
+                        }
+                        
+                        total_time += elapsed;
+                        println!("{} Stellungen in {}ms berechnet. Ergebnisse werden gespeichert…", times, elapsed);
+                        write_file("step_hk.hkdb", hk.write(String::from("TOGREstep Session.")));
+                        write_file("step_result.togredb", result_db.write());
+                        write_file("step_helperdb.togredb", T::DB::new().import_filtered(&helper_db, helper_condition).write());
+                    }
+                    "s" => {
+                        println!("\n-- TOGREstep STATISTIK --");
+                        let hklen = hk.len();
+                        let reslen = result_db.len();
+                        println!("Noch zu berechnende Stellungen:           {}", hklen);
+                        println!("Berechnete Stellungen im Halbkreis:       {} ({})", reslen, ((hklen + reslen) / reslen) * 100);
+                        println!("Größe der HelperDB (zu diesem Zeitpunkt): {}", helper_db.len());
+                        println!("Gesamte Rechenzeit seit Beginn:           {}ms = {}min", total_time, total_time / 60000);
+                    }
+                    _ => {
+                        // Speichern ist wohl nicht nötig, weil bei "z" schon immer gespeichert wird.
+                        write_file("step_stats", total_time.to_string());
+                        break 'l;
+                    }
                 }
             }
         }
