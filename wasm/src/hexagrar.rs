@@ -303,8 +303,10 @@ pub mod T {
         times: (i64, i64, i64) // i, get, set
     }
     impl DB {
+        
         /// Erstellt eine neue, leere `DB`.
         pub fn new() -> DB { DB { x: HashMap::new(), o: HashMap::new(), times: (0, 0, 0) } }
+        
         /// Dekodiert eine `DB` aus einem kodierten `String` (Gegenstück zu `write`).
         pub fn from(code: String) -> DB {
             let mut db = DB::new();
@@ -323,10 +325,12 @@ pub mod T {
             for pos in &parts[5] { db.o.insert(pos.clone(), Togre::R); }
             db
         }
+        
         /// Gibt die Gesamtzahl aller Einträge aus.
         pub fn len(&self) -> usize {
             self.x.len() + self.o.len()
         }
+        
         /// Gibt eine `Some(Togre)` zurück, wenn `pos`/`p` in der `DB` enthalten sind, sonst `None`.
         pub fn get(&mut self, pos: &H::Pos, p: &H::Player) -> Option<H::Togre> {
             self.times.1 += 1;
@@ -335,11 +339,13 @@ pub mod T {
                 None => None
             }
         }
+        
         /// Setzt `pos`/`p` auf Togre `t`.
         pub fn set(&mut self, pos: H::Pos, p: &H::Player, t: &H::Togre) {
             self.times.2 += 1;
             (if *p == H::Player::X { &mut self.x } else { &mut self.o }).insert(pos, *t);
         }
+        
         /// Berechnet die `Togre`-Zahl für `pos`/`p` und gibt ein `CalcResult` zurück.
         pub fn get_by_score(&mut self, pos: &Pos, p: &Player) -> Option<i8> {
             match self.get(pos, p) {
@@ -347,12 +353,14 @@ pub mod T {
                 None => None
             }
         }
+        
         pub fn set_by_score(&mut self, pos: Pos, p: &Player, score: i8) {
             match Togre::from_score(score) {
                 Some(togr) => self.set(pos, p, &togr),
                 None => { }
             }
         }
+        
         pub fn calc(&mut self, pos: &Pos, p: &H::Player, full: bool) -> CalcResult {
             let old_len = self.len();
             let t = match pos.won() {
@@ -373,6 +381,7 @@ pub mod T {
                 times: self.times
             }
         }
+        
         /// ***Nur für internen Gebrauch:*** Rekursive Kernfunktion zur Togre-Berechnung.
         fn i(&mut self, pos: &H::Pos, p: &H::Player) -> H::Togre {
             self.times.0 += 1;
@@ -413,6 +422,7 @@ pub mod T {
             }
             if is_r || is_remis { H::Togre::R } else { p.not().togre() }
         }
+        
         fn i_full(&mut self, pos: &Pos, p: &Player) -> Togre {
             self.times.0 += 1;
             // pos ist garantiert nicht gewonnen und nicht in der DB. (Denn bei rekursivem Aufruf wurde dies schon vorher geprüft, s.u., und der manuelle Aufruf sollte über calc erfolgen, wo dies auch geschieht, s.o.)
@@ -442,6 +452,7 @@ pub mod T {
                 if positiv { p.togre() } else if neutral { Togre::R } else { p.not().togre() }
             }
         }
+        
         /// Kodiert die `DB` in einen String.
         pub fn write(&self) -> String {
             let mut x_x: Vec<Pos> = vec![];
@@ -484,6 +495,24 @@ pub mod T {
             for entry in other.o.into_iter() {
                 self.o.insert(entry.0, entry.1);
             }
+        }
+    
+        /// Importiert alle Einträge aus `other`, die die `condition` erfüllen, in diese DB.
+        pub fn import_filtered<C>(&mut self, other: &DB, condition: C) -> &mut Self
+        where
+            C: Fn(&Pos) -> bool
+        {
+            for entry in &other.x {
+                if condition(&entry.0) {
+                    self.x.insert(entry.0.clone(), *entry.1);
+                }
+            }
+            for entry in &other.o {
+                if condition(&entry.0) {
+                    self.o.insert(entry.0.clone(), *entry.1);
+                }
+            }
+            self
         }
     }
 
@@ -709,13 +738,15 @@ pub mod T {
 
 #[allow(non_snake_case)]
 pub mod HK {
-    use super::H::{Pos, Player};
+    use super::H::{ Pos, Player };
 
     /// Allgemeines Set mit Stellungen für beide Player.
     pub struct Set { pub x: Vec<Pos>, pub o: Vec<Pos>}
     impl Set {
+        
         /// Erstellt ein leeres Set.
         pub fn new() -> Set { Set { x: vec![], o: vec![] } }
+        
         /// Erstellt ein neues Set aus einem kodierten String.
         pub fn from(code: String) -> Set {
             let mut s = Set::new();
@@ -724,38 +755,35 @@ pub mod HK {
             s.o.append(&mut Pos::collection_from(parts[1].clone()));
             s
         }
+        
+        /// Kodiert das `Set` in einen `String`, wobei X und O durch `#` getrennt werden.
+        pub fn write(&self) -> String {
+            Pos::write_collection(&self.x) + "#" + &Pos::write_collection(&self.o)
+        }
+        
         /// Prüft, ob `pos` mit dem Player `p` im Set enthalten ist.
         pub fn has(&self, pos: &Pos, p: &Player) -> bool {
             (if p == &Player::X { &self.x } else { &self.o }).contains(pos)
         }
+        
         /// Fügt `pos` mit Player `p` zum Set hinzu, wenn nicht schon enthalten. Der Return-Wert gibt an, ob ein neuer Wert hinzugefügt wurde.
         pub fn add(&mut self, pos: Pos, p: &Player) -> bool {
             let v = if p == &Player::X { &mut self.x } else { &mut self.o };
             if v.contains(&pos) { false } else { v.push(pos); true }
         }
-        /// Kodiert das `Set` in einen `String`, wobei X und O durch `#` getrennt werden.
-        pub fn write(&self) -> String {
-            Pos::write_collection(&self.x) + "#" + &Pos::write_collection(&self.o)
-        }
+        
         /// Gibt die Gesamtanzahl aller Einträge aus.
         pub fn len(&self) -> usize {
             self.x.len() + self.o.len()
         }
+        
         /// Fügt alle Elemente von `other` in dieses Set hinzu
-        pub fn join(&mut self, other: Set) {
+        pub fn import(&mut self, other: Set) -> &mut Self {
             for element in other.x { self.add(element, &Player::X); }
             for element in other.o { self.add(element, &Player::O); }
+            self
         }
-        /// Entfernt bis zu `count` Elemente (zufällig) aus diesem Set und gibt sie als separates Set zurück.
-        pub fn seperate(&mut self, count: i32) -> Set {
-            let mut n = Set::new();
-            for _ in 0..(count / 2) {
-                if self.x.len() > 0 { n.add(self.x.swap_remove(0), &Player::X); }
-                else if self.o.len() > 0 { n.add(self.o.swap_remove(0), &Player::O); }
-                else { break; };
-            }
-            n
-        }
+        
         /// Entfernt ein (zufälliges) Element aus dem Set und gibt Some(Element), wenn keines mehr enthalten ist, None zurück.
         pub fn drop_one(&mut self) -> Option<(Pos, Player)> {
             if self.x.len() > 0 {
@@ -766,7 +794,20 @@ pub mod HK {
             }
             else { None }
         }
+        
+        /// Entfernt bis zu `count` Elemente (zufällig) aus diesem Set und gibt sie als separates Set zurück.
+        pub fn seperate(&mut self, count: i32) -> Set {
+            let mut n = Set::new();
+            for _ in 0..(count / 2) {
+                if self.x.len() > 0 { n.add(self.x.swap_remove(0), &Player::X); }
+                else if self.o.len() > 0 { n.add(self.o.swap_remove(0), &Player::O); }
+                else { break; };
+            }
+            n
+        }
+        
     }
+    
     pub struct Halbkreis {
         pub c: Set,
         pub arms: Set,
@@ -780,12 +821,19 @@ pub mod HK {
             // Die ersten drei Angaben sind fiktiv. Da ich kein System habe, um aus einem String-Kodierten HK diese Angaben zu extrahieren, habe ich die entsprechenden Felder im struct als private markiert und die Angaben unten gefaket.
             Halbkreis { compl: 8, start_pos: Pos::from("-"), start_player: Player::X, arms: Set::new(), c: Set::from(code.split("%%").collect::<Vec<&str>>()[1].to_string())}
         }
+        
+        /// Kodiert den `Halbkreis` in einen `String`.
+        pub fn write(&self, remarks: String) -> String {
+            format!("Rusty-Togre Halbkreis: {}/{:?} (compl: {}) im Format X#O\nRemarks: {}\n%%{}", self.start_pos.write(), self.start_player, self.compl, remarks, self.c.write())
+        }
+
         /// Generiert einen neuen `Halbkreis` bei der Komplexität `compl` von der `start_stellung` mit dem `start_player` aus und gibt diesen zurück.
         pub fn gener(start_pos: Pos, start_player: &Player, compl: usize) -> Halbkreis {
             let mut h = Halbkreis { c: Set::new(), arms: Set::new(), compl, start_pos, start_player: *start_player};
             h.i(h.start_pos.clone(), start_player);
             h
         }
+        
         /// ***Nur für internen Gebrauch:*** Rekursive Kernfunktion zur Halbkreis-Generation.
         fn i(&mut self, pos: Pos, p: &Player) {
             // Ist pos Teil des Halbkreises? Dann abspeichern.
@@ -800,10 +848,54 @@ pub mod HK {
                 self.arms.add(pos, p);
             };
         }
+        
+    }
+
+    pub struct Halbkreis2 {
+        pub c: Set,
+        pub arms: Set,
+        tiefe: usize,
+        start_pos: Pos,
+        start_player: Player
+    }
+    impl Halbkreis2 {
+        /// Dekodiert einen `Halbkreis` aus dem gegeben `code` (Gegenstück zu `write`).
+        pub fn from(code: String) -> Halbkreis2 {
+            // Die ersten drei Angaben sind fiktiv. Da ich kein System habe, um aus einem String-Kodierten HK diese Angaben zu extrahieren, habe ich die entsprechenden Felder im struct als private markiert und die Angaben unten gefaket.
+            Halbkreis2 { tiefe: 8, start_pos: Pos::from("-"), start_player: Player::X, arms: Set::new(), c: Set::from(code.split("%%").collect::<Vec<&str>>()[1].to_string())}
+        }
+        
         /// Kodiert den `Halbkreis` in einen `String`.
         pub fn write(&self, remarks: String) -> String {
-            format!("Rusty-Togre Halbkreis: {}/{:?} (compl: {}) im Format X#O\nRemarks: {}\n%%{}", self.start_pos.write(), self.start_player, self.compl, remarks, self.c.write())
+            format!("Rusty-Togre Halbkreis: {}/{:?} (tiefe: {}) im Format X#O\nRemarks: {}\n%%{}", self.start_pos.write(), self.start_player, self.tiefe, remarks, self.c.write())
         }
+
+        /// Generiert einen neuen `Halbkreis` bei der Komplexität `compl` von der `start_stellung` mit dem `start_player` aus und gibt diesen zurück.
+        pub fn gener(start_pos: Pos, start_player: &Player, tiefe: usize) -> Halbkreis2 {
+            let mut h = Halbkreis2 { c: Set::new(), arms: Set::new(), tiefe, start_pos, start_player: *start_player};
+            h.i(h.start_pos.clone(), start_player, tiefe);
+            h
+        }
+        
+        /// ***Nur für internen Gebrauch:*** Rekursive Kernfunktion zur Halbkreis-Generation.
+        fn i(&mut self, pos: Pos, p: &Player, tiefe: usize) {
+            // Ist pos Teil des Halbkreises? Dann abspeichern.
+            if tiefe == 0 {
+                self.c.add(pos, p);
+            // sonst: wurde pos schon als Arm berechnet? Wenn nein:
+            } else if ! self.arms.has(&pos, p) {
+                // Über Folgestellungen iterieren und berechnen
+                for fs in pos.folgestellungen(p) {
+                    self.i(fs, &p.not(), tiefe - 1);
+                }
+                self.arms.add(pos, p);
+            };
+        }
+        
+        pub fn len(&self) -> usize {
+            self.c.len()
+        }
+
     }
 
     pub fn tool (args: &mut Vec<&str>) {

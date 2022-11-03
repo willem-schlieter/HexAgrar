@@ -1,5 +1,6 @@
 pub mod hexagrar;
 use hexagrar::*;
+use H::{Pos};
 use std::time::Instant;
 
 extern crate termion;
@@ -11,16 +12,18 @@ struct Clock {
 impl Clock {
     pub fn new() -> Clock { Clock { start: Instant::now() } }
     pub fn since(&self) -> u128 { Instant::now().duration_since(self.start).as_millis() }
-    // pub fn reset(&mut self) { self.start = Instant::now(); }
+    pub fn reset(&mut self) { self.start = Instant::now(); }
 }
 
-// fn emph(text: String) -> String {
-//     format!("{}{}{}{}{}",color::Bg(color::Yellow),
-//     style::Bold,
-//     text,
-//     style::Reset,
-//     color::Bg(color::Reset))
-// }
+fn emph(text: String) -> String {
+    format!("{}{} {} {}{}",
+        color::Bg(color::Yellow),
+        style::Bold,
+        text,
+        style::Reset,
+        color::Bg(color::Reset)
+    )
+}
 
 fn message(res: T::CalcResult, duration: u128) -> String {
     format!(
@@ -87,6 +90,20 @@ fn btrs_message(res: BTRS::CalcResult, duration: u128) -> String {
     )
 }
 
+fn read_file(path: &str) -> String {
+    std::fs::read_to_string(path).expect(format!("Datei {} konnte nicht gelesen werden.", path).as_str())
+}
+fn write_file(path: &str, content: String) {
+    std::fs::write(String::from(path), content).expect(format!("Datei {} konnte nicht beschrieben werden.", path).as_str());
+}
+
+fn read_line() -> String {
+    let mut s = String::from("");
+    std::io::stdin().read_line(&mut s).expect("Input konnte nicht gelesen werden.");
+    s.pop();
+    s
+}
+
 fn main() {
     let args_old: Vec<String> = std::env::args().collect();
     let mut args: Vec<&str> = args_old.iter().map(|s| &**s).collect();
@@ -127,7 +144,9 @@ fn main() {
 
 
             println!("{}", message(res, Instant::now().duration_since(before).as_millis()));
-            if write { std::fs::write(file.clone(), db.write()).expect(format!("Could not be written to {}", file).as_str()); }
+            if write {
+                std::fs::write(file.clone(), db.write()).expect(format!("Could not be written to {}", file).as_str());
+            }
         }
         "btrs" => {
             let clock = Clock::new();
@@ -201,6 +220,7 @@ fn main() {
             }
             println!("Inspect beendet.")
         }
+        
         // "halbkreis" | "hk" => {
             // rusty-togre hk [-v[1, 2, 3]] -w out.hkdb ef.kl X 8
             // match args[1] {
@@ -210,6 +230,123 @@ fn main() {
             //     _ => { HK::tool(&mut args) }
             // }
         // }
+        "hk" => {
+            //    0  1     2 3 4
+            // rt hk ef.kl X 6 out.hkdb
+            let pos = Pos::from(args[1]);
+            let poscode = pos.write();
+            let p = H::Player::from(args[2]);
+            let tiefe = args[3].parse::<usize>().expect(format!("Unzulässige Tiefe: {}", args[3]).as_str());
+            let path = args[4];
+
+            let before = Instant::now();
+            let hk = HK::Halbkreis2::gener(pos, &p, tiefe);
+            println!("Halbkreis von {}/{} aus mit Tiefe {} berechnet: {} Einträge, {}ms.", poscode, p.c(), tiefe, emph(hk.len().to_string()), emph(Instant::now().duration_since(before).as_millis().to_string()));
+
+            std::fs::write(path, hk.write(format!("Zugtiefen-Halbkries ('HK2'): {}/{} (tiefe={})", poscode, p.c(), tiefe))).expect(format!("Datei konnte nicht beschrieben werden: {}", path).as_str());
+        }
+        "step" => {
+            println!("Willkommen bei TOGREstep!\nLade Dateien…");
+
+            let mut clock = Clock::new();
+
+            // Bedingung, damit Einträge dauerhaft in der helper_DB gespeichert werden.
+            let helper_condition = |p: &Pos| -> bool {
+                // Sind mehr als 7 Figuren auf dem Feld?
+                p.0.len() + p.1.len() > 7
+            };
+
+            let mut hk = HK::Halbkreis2::from(read_file("step_hk.hkdb"));
+            let mut helper_db = T::DB::from(read_file("step_helperdb.togredb"));
+            let mut result_db = T::DB::from(read_file("step_result.togredb"));
+
+            // let mut current = (Pos::from("ef.kl"), H::Player::X);
+
+            println!("Es kann losgehen!");
+
+            'l: loop {
+                if let Some(current) = hk.c.drop_one() {
+                    let mut input = String::from("");
+                    while input != "j" && input != "n" && input != "q" && input != "z" {
+                        println!("\nStellung {}/{} berechnen?", current.0.write(), current.1.c());
+                        println!("[j]a    [z]eitlang    [n]ein, nächste    [q]uit");
+                        input = read_line();
+                    }
+                    match input.as_str() {
+                        "j" => {
+                            println!("Berechnung wird gestartet…");
+                            clock.reset();
+                            let res = helper_db.calc(&current.0, &current.1, false);
+                            result_db.set(current.0, &current.1, &res.t);
+                            println!("{}", message(res, clock.since()));
+                            
+                            println!("Ergebnisse werden gespeichert…");
+                            write_file("step_hk.hkdb", hk.write(String::from("TOGREstep Session.")));
+                            write_file("step_result.togredb", result_db.write());
+                            write_file("step_helperdb.togredb", T::DB::new().import_filtered(&helper_db, helper_condition).write());
+                        }
+                        "n" => {
+                            hk.c.add(current.0, &current.1);
+                        }
+                        "z" => {
+                            // Hier brauchen wir current nicht.
+                            hk.c.add(current.0, &current.1);
+
+                            // Zeit, die gerechnet werden soll, in ms.
+                            let mut time: u128 = 0;
+                            let mut elapsed: u128 = 0;
+
+                            println!("\n'TOGREstep Zeitlang' ermöglicht dir, TOGREstep eine bestimmte Zeit lang rechnen zu lassen, ohne nach jedem Schritt gefragt zu werden, ob du weiter machen möchtest.");
+                            'w: while time == 0 {
+                                println!("Wie viele Sekunden soll 'Zeitlang' rechnen?");
+                                if let Ok(t) = read_line().parse::<u128>() {
+                                    time = t * 1000;
+                                    break 'w;
+                                } else {
+                                    println!("Bitte gib eine gültige Zahl ein!");
+                                }
+                            }
+                            
+                            let mut times: u32 = 0;
+                            while elapsed < time {
+                                times += 1;
+                                if let Some(current) = hk.c.drop_one() {
+                                    println!("\nBerechne {}/{}…", &current.0.write(), current.1.c());
+                                    clock.reset();
+                                    let res = helper_db.calc(&current.0, &current.1, false);
+                                    result_db.set(current.0, &current.1, &res.t);
+                                    println!("{}", message(res, clock.since()));
+                                    elapsed += clock.since();
+
+                                    if times % 10 == 0 {
+                                        println!("Zur Sicherheit zwischendurch speichern…");
+                                        write_file("step_hk.hkdb", hk.write(String::from("TOGREstep Session.")));
+                                        write_file("step_result.togredb", result_db.write());
+                                        write_file("step_helperdb.togredb", T::DB::new().import_filtered(&helper_db, helper_condition).write());
+                                    }
+
+                                } else {
+                                    println!("Die HKDB ist leer - Die Berechnung ist abgeschlossen! Herzlichen Glückwunsch!");
+                                    break 'l;
+                                }
+                            }
+                            println!("{} Stellungen berechnet. Ergebnisse werden gespeichert…", times);
+                            write_file("step_hk.hkdb", hk.write(String::from("TOGREstep Session.")));
+                            write_file("step_result.togredb", result_db.write());
+                            write_file("step_helperdb.togredb", T::DB::new().import_filtered(&helper_db, helper_condition).write());
+                        }
+                        _ => {
+                            // Speichern ist wohl nicht nötig, weil bei "j" schon immer gespeichert wird.
+                            break 'l;
+                        }
+                    }
+                } else {
+                    println!("Die HKDB ist leer - Die Berechnung ist abgeschlossen! Herzlichen Glückwunsch!");
+                    break 'l;
+                }
+            }
+        }
+        
         "calc_hk_unit" => {
             let unit_size = args[1].to_string().parse::<usize>().expect(&format!("Invalid unit_size input: {}", args[1]));
             let mut hk = HK::Halbkreis::from(std::fs::read_to_string("CALC.hkdb").expect("CALC.hkdb konnte nicht gelesen werden."));
@@ -229,6 +366,7 @@ fn main() {
 
 
         }
+        
         "convert" => {
             println!("{} = {:?}", args[1], H::Pos::from(args[1]))
         }

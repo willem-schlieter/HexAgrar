@@ -11,9 +11,9 @@
         (soweit vorhanden) die Einträge für die gegebene Konstellation
         und alle direkten Folgestellungen aus.
     
-    hk -v[1,2,3] [-w file] [stellung] [player_code] [compl]
-        Halbkreis mit gegebener Komplexität berechnen und speichern,
-        wenn angegeben.
+    hk [stellung] [player_code] [tiefe] [pfad]
+        Halbkreis mit gegebener Zugtiefe berechnen und in angegebener
+        Datei speichern.
     
     convert [stellung]
         Stellungscode in Pos konvertieren (V1 wird verwendet).

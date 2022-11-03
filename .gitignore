@@ -5,3 +5,5 @@ Cargo.lock
 /rusty-hexagrar/run
 /wasm/target
 /wasm/tests
+*.togredb
+*.hkdb
