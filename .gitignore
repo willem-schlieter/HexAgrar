@@ -1,4 +1,5 @@
-*/.DS_Store
+.DS_Store
+**/.DS_Store
 /campus/node_modules
 Cargo.lock
 /rusty-hexagrar/target

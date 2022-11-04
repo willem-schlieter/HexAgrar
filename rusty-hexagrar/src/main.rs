@@ -112,6 +112,9 @@ fn main() {
 
     match args[0] {
         "test" => {
+            let a = 72000.0;
+            let b = 848.0;
+            println!("{:.2}%", (b / (a + b)) * 100.0);
         }
         "args" => {
             println!("{:?}", args);
@@ -348,31 +351,31 @@ fn main() {
         }
 
         "step" => {
-            println!("Willkommen bei TOGREstep!\nLade Dateien…");
+            println!("Willkommen bei TOGREstep!\nBEACHTE: Beende TOGREstep nicht mit ^C oder Ähnlichem, sondern indem du 'q' eingibst! Nur so können alle Berechnungserfolge gespeichert werden. (Beim zwischenzeitigen Abbrechen werden zwar die berechneten HK-Stellungen gesichert, nicht aber die HelperDB.)\nLade Dateien…");
 
             let mut clock = Clock::new();
 
             // Bedingung, damit Einträge dauerhaft in der helper_DB gespeichert werden.
             let helper_condition = |p: &Pos| -> bool {
                 // Sind mehr als 7 Figuren auf dem Feld?
-                p.0.len() + p.1.len() > 7
+                p.0.len() + p.1.len() > 9
             };
 
-            let mut hk = HK::Halbkreis2::from(read_file("step_hk.hkdb"));
-            let mut helper_db = T::DB::from(read_file("step_helperdb.togredb"));
-            let mut result_db = T::DB::from(read_file("step_result.togredb"));
-            let mut total_time = read_file("step_stats").parse::<u128>().expect("Der Inhalt von step_stats ist ungültig.");
+            let mut hk = HK::Halbkreis2::from(read_file("step_files/step_hk.hkdb"));
+            let mut helper_db = T::DB::from(read_file("step_files/step_helperdb.togredb"));
+            let mut result_db = T::DB::from(read_file("step_files/step_result.togredb"));
+            let mut total_time = read_file("step_files/step_stats").parse::<u128>().expect("Der Inhalt von step_stats ist ungültig.");
 
             'l: loop {
                 let mut input = String::from("");
-                while input != "z" && input != "q" {
+                while input != "r" && input != "q" && input != "s" {
                     println!("\nWas möchtest du tun?");
-                    println!("[z]eitlang rechnen    NOCH NICHT: [s]tatistik anzeigen    [q]uit");
+                    println!("[r]echnen    [s]tatistik    [q]uit");
                     input = read_line();
                 }
 
                 match input.as_str() {
-                    "z" => {
+                    "r" => {
                         // Zeit, die gerechnet werden soll, in ms.
                         let mut time: u128 = 0;
                         // Zeit, die schon gerechnet wurde, in ms.
@@ -402,10 +405,10 @@ fn main() {
                                 elapsed += clock.since();
 
                                 if times % 10 == 0 {
-                                    println!("Zur Sicherheit zwischendurch speichern…");
-                                    write_file("step_hk.hkdb", hk.write(String::from("TOGREstep Session.")));
+                                    println!("Zur Sicherheit zwischendurch speichern… (Aber nur resultDB)");
                                     write_file("step_result.togredb", result_db.write());
-                                    write_file("step_helperdb.togredb", T::DB::new().import_filtered(&helper_db, helper_condition).write());
+                                    // Um Zeit zu sparen, wird hier nur das Wichtigste gespeichert: Die Ergebnisse. Wenn vorzeitig abgebrochen wird, stehen im HK bereits berechnete Stellungen, was kein Problem ist, weil diese ja dann beim nächsten Mal in 0ms berechnet sind und aus dem HK entfernt werden.
+                                    // Auch die HelperDB wird nicht gespeichert, weil das so ewig braucht.
                                 }
 
                             } else {
@@ -416,21 +419,24 @@ fn main() {
                         
                         total_time += elapsed;
                         println!("{} Stellungen in {}ms berechnet. Ergebnisse werden gespeichert…", times, elapsed);
-                        write_file("step_hk.hkdb", hk.write(String::from("TOGREstep Session.")));
-                        write_file("step_result.togredb", result_db.write());
-                        write_file("step_helperdb.togredb", T::DB::new().import_filtered(&helper_db, helper_condition).write());
+                        write_file("step_files/step_hk.hkdb", hk.write(String::from("TOGREstep Session.")));
+                        write_file("step_files/step_result.togredb", result_db.write());
+                        
+                        // Da das so lange dauert, wird die HelperDB hier nicht gespeichert. Das passiert nur, wenn man ordnungsgemäß beendet, s.u. Es ist auch nicht schlimm, wenn man vorzeitig abgebrochen wird, weil die HelperDB ja optional ist - dann dauert es beim nächsten mal vielleicht etwas länger.
+                        // write_file("step_files/step_helperdb.togredb", T::DB::new().import_filtered(&helper_db, helper_condition).write());
                     }
                     "s" => {
                         println!("\n-- TOGREstep STATISTIK --");
-                        let hklen = hk.len();
-                        let reslen = result_db.len();
+                        let hklen = hk.len() as f64;
+                        let reslen = result_db.len() as f64;
+                        let perc = (reslen / (hklen + reslen)) * 100.0;
                         println!("Noch zu berechnende Stellungen:           {}", hklen);
-                        println!("Berechnete Stellungen im Halbkreis:       {} ({})", reslen, ((hklen + reslen) / reslen) * 100);
+                        println!("Berechnete Stellungen im Halbkreis:       {} ({:.2}%)", reslen, perc);
                         println!("Größe der HelperDB (zu diesem Zeitpunkt): {}", helper_db.len());
                         println!("Gesamte Rechenzeit seit Beginn:           {}ms = {}min", total_time, total_time / 60000);
                     }
                     _ => {
-                        // Speichern ist wohl nicht nötig, weil bei "z" schon immer gespeichert wird.
+                        write_file("step_files/step_helperdb.togredb", T::DB::new().import_filtered(&helper_db, helper_condition).write());
                         write_file("step_stats", total_time.to_string());
                         break 'l;
                     }
