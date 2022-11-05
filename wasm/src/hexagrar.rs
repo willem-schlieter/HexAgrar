@@ -15,10 +15,12 @@ pub mod H {
     #[derive(Debug, PartialEq, Eq, Hash, Clone)]
     pub struct Pos (pub Vec<i8>, pub Vec<i8>);
     impl Pos {
+        
         /// Kodiert eine Collection (`Vec<Pos>`) zu einem `String`, wobei die Stellungen durch ein `/` getrennt werden.
         pub fn write_collection(collection: &Vec<Pos>) -> String {
             collection.iter().map(|p| p.write()).collect::<Vec<String>>().join("/")
         }
+        
         /// Dekodiert eine Collection aus einem kodierten `String` (Gegenstück zu `write_collection`).
         pub fn collection_from(code: String) -> Vec<Pos> {
             code.split("/").map(|c| Pos::from(c)).collect()
@@ -26,6 +28,7 @@ pub mod H {
         
         /// Erstellt eine leere Stellung.
         pub fn new() -> Pos { Pos(vec![], vec![]) }
+        
         /// Erstellt eine Stellung aus einem gegebenen Code.
         pub fn from(code: &str) -> Pos {
             if code == "-" { return Pos::from("012345.uvwxyz") }
@@ -51,6 +54,7 @@ pub mod H {
             }
             Pos(res[0].clone(), res[1].clone())
         }
+        
         /// Gibt den Code der Stellung aus.
         pub fn write(&self) -> String {
             let mut r = String::new();
@@ -59,6 +63,7 @@ pub mod H {
             for f in self.1.iter() { r.push(FIELDS[*f as usize]); }
             r
         }
+        
         /// Gibt eine & zum Vec<i8> des angegebenen Players zurück.
         pub fn of(&self, player: &Player) -> &Vec<i8> {
             match player {
@@ -66,6 +71,7 @@ pub mod H {
                 Player::O => &(self.1)
             }
         }
+        
         /// Gibt eine &mut zum Vec<i8> des angegebenen Players zurück.
         pub fn of_mut(&mut self, player: &Player) -> &mut Vec<i8> {
             match player {
@@ -73,12 +79,14 @@ pub mod H {
                 Player::O => &mut (self.1)
             }
         }
+        
         /// Gibt zurück, ob ein Spieler gewonnen hat, sonst None.
         pub fn won(&self) -> Option<Player> {
             for f in self.0.iter() { if self.row_for(*f, &Player::X) == 5 { return Some(Player::X) } }
             for f in self.1.iter() { if self.row_for(*f, &Player::O) == 5 { return Some(Player::O) } }
             None
         }
+        
         /// Gibt an, in welcher Reihe das gegebene Feld für den gegebenen Player ist.
         pub fn row_for(&self, feld: i8, player: &Player) -> i8 {
             if *player == Player::X {
@@ -87,6 +95,7 @@ pub mod H {
                 5 - (feld - (feld % 6)) / 6
             }
         }
+        
         /// Berechnet die Komplexität der Stellung, also die Anzahl der Figuren, die sich im Heimbereich befinden.
         pub fn compl(&self) -> usize {
             self.0.iter().filter(|feld| self.row_for(**feld, &Player::X) < 2).collect::<Vec<&i8>>().len() + self.1.iter().filter(|feld| self.row_for(**feld, &Player::O) < 2).collect::<Vec<&i8>>().len()
@@ -95,7 +104,8 @@ pub mod H {
             // for f in &self.1 { if self.row_for(*f, &Player::O) < 2 { c += 1 } };
             // c
         }
-        // Ermittelt alle möglichen Zielfelder, die ein Spieler von einem Feld aus in dieser Pos erreichen kann.
+        
+        /// Ermittelt alle möglichen Zielfelder, die ein Spieler von einem Feld aus in dieser Pos erreichen kann.
         pub fn zielfelder(&self, feld: i8, p: &Player) -> [Option<i8>; 4] {
             // Steht der angegebene Spieler überhaupt auf dem Feld?
             // Nur für dev, später uU löschen (wegen perf)
@@ -144,7 +154,8 @@ pub mod H {
                 res
             }
         }
-        // Wendet einen Zug auf self an und gibt die resultierende Stellung zurück.
+        
+        /// Wendet einen Zug auf self an und gibt die resultierende Stellung zurück.
         pub fn zug_anwenden(&self, startfeld: i8, zielfeld: i8, p: &Player) -> Pos {
             let (mut eigenes, mut anderes) = (vec![], vec![]);
             let mut weiter = true;
@@ -162,7 +173,8 @@ pub mod H {
             if weiter { eigenes.push(zielfeld); }
             if p == &Player::X { Pos(eigenes, anderes) } else { Pos(anderes, eigenes) }
         }
-        // Gibt einen Vector mit allen möglichen Folgestellungen zurück.
+        
+        /// Gibt einen Vector mit allen möglichen Folgestellungen zurück.
         pub fn folgestellungen(&self, p: &Player) -> Vec<Pos> {
             let mut res: Vec<Pos> = vec![];
             for feld in self.of(p) {
@@ -207,6 +219,34 @@ pub mod H {
                 }
             }
             res
+        }
+    
+        pub fn mirror_x(&self) -> Pos {
+            let mut x: Vec<i8> = vec![];
+            let mut o: Vec<i8> = vec![];
+            for f in &self.0 {
+                x.push(f - (f % 6) + (5 - (f % 6)));
+            };
+            for f in &self.1 {
+                o.push(f - (f % 6) + (5 - (f % 6)));
+            };
+            x.sort_unstable();
+            o.sort_unstable();
+            Pos ( x, o )
+        }
+
+        pub fn mirror_y(&self) -> Pos {
+            let mut x: Vec<i8> = vec![];
+            let mut o: Vec<i8> = vec![];
+            for f in &self.0 {
+                o.push(f + (((f - (f % 6)) / 3) - 5) * -6);
+            }
+            for f in &self.1 {
+                x.push(f + (((f - (f % 6)) / 3) - 5) * -6);
+            }
+            x.sort_unstable();
+            o.sort_unstable();
+            Pos ( x, o )
         }
     }
 
@@ -286,6 +326,13 @@ pub mod H {
             else if score == 0 { Some(Togre::R) }
             else { None }
         }
+        pub fn neg(&self) -> Togre {
+            match self {
+                Togre::X => Self::O,
+                Togre::O => Self::X,
+                Togre::R => Self::R
+            }
+        }
     }
 }
 
@@ -334,9 +381,21 @@ pub mod T {
         /// Gibt eine `Some(Togre)` zurück, wenn `pos`/`p` in der `DB` enthalten sind, sonst `None`.
         pub fn get(&mut self, pos: &H::Pos, p: &H::Player) -> Option<H::Togre> {
             self.times.1 += 1;
-            match (if *p == H::Player::X { &self.x } else { &self.o }).get(&pos) {
-                Some(t) => Some(*t),
-                None => None
+            let map = if *p == H::Player::X { &self.x } else { &self.o };
+            if let Some(t) = map.get(&pos) {
+                Some(*t)
+            } else if let Some(t) = map.get(&pos.mirror_x()) {
+                Some(*t)
+            } else {
+                let other_map = if *p == H::Player::O { &self.x } else { &self.o };
+                let newpos = pos.mirror_y();
+                if let Some(t) = other_map.get(&newpos) {
+                    Some(t.neg())
+                } else if let Some(t) = other_map.get(&newpos.mirror_x()) {
+                    Some(t.neg())
+                } else {
+                    None
+                }
             }
         }
         

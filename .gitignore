@@ -4,6 +4,7 @@
 Cargo.lock
 /rusty-hexagrar/target
 /rusty-hexagrar/run
+/rusty-hexagrar/step_files
 /wasm/target
 /wasm/tests
 *.togredb

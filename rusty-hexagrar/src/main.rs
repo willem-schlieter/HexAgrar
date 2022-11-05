@@ -112,9 +112,8 @@ fn main() {
 
     match args[0] {
         "test" => {
-            let a = 72000.0;
-            let b = 848.0;
-            println!("{:.2}%", (b / (a + b)) * 100.0);
+            let p = Pos::from("0dg235.jruwyz");
+            println!("{}", p.mirror_y().write());
         }
         "args" => {
             println!("{:?}", args);
