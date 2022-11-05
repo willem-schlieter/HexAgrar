@@ -20,7 +20,7 @@ impl TogreCalculator {
         TogreCalculator { db: hexagrar::T::DB::new() }
     }
     pub fn calc(&mut self, poscode: &str, p: &str) -> i8 {
-        match self.db.calc(&hexagrar::H::Pos::from(poscode), hexagrar::H::Player::from(p), false).t {
+        match self.db.calc(&hexagrar::H::Pos::from(poscode), &hexagrar::H::Player::from(p), false).t {
             hexagrar::H::Togre::X => 1,
             hexagrar::H::Togre::O => -1,
             hexagrar::H::Togre::R => 0

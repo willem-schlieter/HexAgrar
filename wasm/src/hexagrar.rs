@@ -106,7 +106,7 @@ pub mod H {
         }
         
         /// Ermittelt alle möglichen Zielfelder, die ein Spieler von einem Feld aus in dieser Pos erreichen kann.
-        pub fn zielfelder(&self, feld: i8, p: &Player) -> [Option<i8>; 4] {
+        pub fn zielfelder(&self, feld: i8, p: &Player, prefmat: bool) -> [Option<i8>; 4] {
             // Steht der angegebene Spieler überhaupt auf dem Feld?
             // Nur für dev, später uU löschen (wegen perf)
             if ! self.of(&p).contains(&feld) { panic!("In der Pos {:?} steht der Player {:?} nicht auf dem Feld {:?}.", self, p, feld) }
@@ -151,7 +151,7 @@ pub mod H {
                     // … dann kann man ihn dort schlagen.
                     { res[3] = Some(ziele.3); }
                 }
-                res
+                if prefmat { [res[2], res[3], res[1], res[0]] } else { res }
             }
         }
         
@@ -221,6 +221,8 @@ pub mod H {
             res
         }
     
+        /// Spiegelt die Stellung linsk/rechts.
+        // 49.7% Einsparung bei den Einträgen in der DB.
         pub fn mirror_x(&self) -> Pos {
             let mut x: Vec<i8> = vec![];
             let mut o: Vec<i8> = vec![];
@@ -235,6 +237,8 @@ pub mod H {
             Pos ( x, o )
         }
 
+        /// Spiegelt die Stellung oben/unten. ACHTUNG: p und Togre-Zahl umdrehen!
+        // 42.8% Einsparung bei den Einträgen in der DB.
         pub fn mirror_y(&self) -> Pos {
             let mut x: Vec<i8> = vec![];
             let mut o: Vec<i8> = vec![];
@@ -347,12 +351,24 @@ pub mod T {
     pub struct DB {
         x: HashMap<H::Pos, H::Togre>,
         o: HashMap<H::Pos, H::Togre>,
-        times: (i64, i64, i64) // i, get, set
+        times: (i64, i64, i64), // i, get, set
+        pub symmeth: u8,
+        pub reviter: bool,
+        pub prefmat: bool
     }
     impl DB {
         
         /// Erstellt eine neue, leere `DB`.
-        pub fn new() -> DB { DB { x: HashMap::new(), o: HashMap::new(), times: (0, 0, 0) } }
+        pub fn new() -> DB {
+            DB {
+                x: HashMap::new(),
+                o: HashMap::new(),
+                times: (0, 0, 0),
+                symmeth: 3,
+                reviter: true,
+                prefmat: false
+            }
+        }
         
         /// Dekodiert eine `DB` aus einem kodierten `String` (Gegenstück zu `write`).
         pub fn from(code: String) -> DB {
@@ -383,20 +399,26 @@ pub mod T {
             self.times.1 += 1;
             let map = if *p == H::Player::X { &self.x } else { &self.o };
             if let Some(t) = map.get(&pos) {
-                Some(*t)
-            } else if let Some(t) = map.get(&pos.mirror_x()) {
-                Some(*t)
-            } else {
+                return Some(*t);
+            }
+            if self.symmeth == 1 || self.symmeth == 3 {
+                if let Some(t) = map.get(&pos.mirror_x()) {
+                    return Some(*t);
+                }
+            }
+            if self.symmeth > 1 {
                 let other_map = if *p == H::Player::O { &self.x } else { &self.o };
                 let newpos = pos.mirror_y();
                 if let Some(t) = other_map.get(&newpos) {
-                    Some(t.neg())
-                } else if let Some(t) = other_map.get(&newpos.mirror_x()) {
-                    Some(t.neg())
-                } else {
-                    None
+                    return Some(t.neg());
+                }
+                if self.symmeth == 3 {
+                    if let Some(t) = other_map.get(&newpos.mirror_x()) {
+                        return Some(t.neg());
+                    }
                 }
             }
+            return None;
         }
         
         /// Setzt `pos`/`p` auf Togre `t`.
@@ -420,6 +442,45 @@ pub mod T {
             }
         }
         
+        /// Importiert sämtliche Inhalte der DB `other` in diese DB.
+        pub fn import(&mut self, other: DB) -> &mut Self {
+            self.import_filtered(&other, |_| true)
+        }
+    
+        /// Importiert alle Einträge aus `other`, die die `condition` erfüllen, in diese DB.
+        pub fn import_filtered<C>(&mut self, other: &DB, condition: C) -> &mut Self
+        where C: Fn(&Pos) -> bool {
+            for entry in &other.x {
+                match self.get(entry.0, &Player::X) {
+                    Some(t) => {
+                        if &t != entry.1 {
+                            panic!("Die Einträge für {}/X stimmen nicht überein. Self: {}, Imported: {}", entry.0.write(), t.write(), entry.1.write());
+                        }
+                    }
+                    None => {
+                        if condition(&entry.0) {
+                            self.set(entry.0.clone(), &Player::X, entry.1);
+                        }
+                    }
+                }
+            }
+            for entry in &other.o {
+                match self.get(entry.0, &Player::O) {
+                    Some(t) => {
+                        if &t != entry.1 {
+                            panic!("Die Einträge für {}/O stimmen nicht überein. Self: {}, Imported: {}", entry.0.write(), t.write(), entry.1.write());
+                        }
+                    }
+                    None => {
+                        if condition(&entry.0) {
+                            self.set(entry.0.clone(), &Player::O, entry.1);
+                        }
+                    }
+                }
+            }
+            self
+        }
+
         pub fn calc(&mut self, pos: &Pos, p: &H::Player, full: bool) -> CalcResult {
             let old_len = self.len();
             let t = match pos.won() {
@@ -451,11 +512,14 @@ pub mod T {
             let mut later: Vec<Pos> = vec![];
             
             // Wir iterieren zunächst über die möglichen Startfelder.
-            for startfeld in pos.of(p) {
-                for zielfeld_op in pos.zielfelder(*startfeld, p) {
+            // let index_slice = if self.reviter && p.is_x() { pos.0.len()..0 } else { 0..pos.of(p).len() };
+            let len = pos.of(p).len();
+            for ix in 0..len {
+                let startfeld = pos.of(p)[if self.reviter && p.is_x() { len - (ix + 1) } else { ix }];
+                for zielfeld_op in pos.zielfelder(startfeld, p, self.prefmat) {
                     if let Some(zielfeld) = zielfeld_op {
                         is_remis = false;
-                        let n = pos.zug_anwenden(*startfeld, zielfeld, p);
+                        let n = pos.zug_anwenden(startfeld, zielfeld, p);
                         let t: Option<H::Togre> = match self.get(&n, &p.not()) {
                             Some(saved) => Some(saved),
                             None => {
@@ -546,33 +610,6 @@ pub mod T {
             res
         }
     
-        /// Importiert sämtliche Inhalte der DB `other` in diese DB.
-        pub fn import(&mut self, other: DB) {
-            for entry in other.x.into_iter() {
-                self.x.insert(entry.0, entry.1);
-            }
-            for entry in other.o.into_iter() {
-                self.o.insert(entry.0, entry.1);
-            }
-        }
-    
-        /// Importiert alle Einträge aus `other`, die die `condition` erfüllen, in diese DB.
-        pub fn import_filtered<C>(&mut self, other: &DB, condition: C) -> &mut Self
-        where
-            C: Fn(&Pos) -> bool
-        {
-            for entry in &other.x {
-                if condition(&entry.0) {
-                    self.x.insert(entry.0.clone(), *entry.1);
-                }
-            }
-            for entry in &other.o {
-                if condition(&entry.0) {
-                    self.o.insert(entry.0.clone(), *entry.1);
-                }
-            }
-            self
-        }
     }
 
     fn get_conc(db_mutex: Arc<Mutex<DB>>, pos: &H::Pos, p: &H::Player) -> (Option<H::Togre>, Arc<Mutex<DB>>) {
@@ -594,7 +631,7 @@ pub mod T {
         
         // Wir iterieren zunächst über die möglichen Startfelder.
         for startfeld in pos.of(p) {
-            for zielfeld_op in pos.zielfelder(*startfeld, p) {
+            for zielfeld_op in pos.zielfelder(*startfeld, p, true) {
                 if let Some(zielfeld) = zielfeld_op {
                     is_remis = false;
                     let n = pos.zug_anwenden(*startfeld, zielfeld, p);
@@ -1014,7 +1051,7 @@ pub mod Auto {
             // Wir iterieren zunächst über die möglichen Startfelder.
             for startfeld in pos.of(p) {
                 // Für jedes Startfeld iterieren wir über die vier Zielfeld-Optionen.
-                for zielfeld_option in pos.zielfelder(*startfeld, p) {
+                for zielfeld_option in pos.zielfelder(*startfeld, p, true) {
                     // Wenn das Zielfeld infrage kommt, man also darauf ziehen kann…
                     if let Some(zielfeld) = zielfeld_option {
                         // …erzeugen wir zunächst die resultierende Stellung.
@@ -1188,7 +1225,7 @@ pub mod BTRS {
             // Wir iterieren zunächst über die möglichen Startfelder.
             for startfeld in pos.of(p) {
                 // Für jedes Startfeld iterieren wir über die vier Zielfeld-Optionen.
-                for zielfeld_option in pos.zielfelder(*startfeld, p) {
+                for zielfeld_option in pos.zielfelder(*startfeld, p, true) {
                     // Wenn das Zielfeld infrage kommt, man also darauf ziehen kann…
                     if let Some(zielfeld) = zielfeld_option {
                         // …erzeugen wir zunächst die resultierende Stellung.

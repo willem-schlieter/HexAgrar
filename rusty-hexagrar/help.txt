@@ -1,10 +1,11 @@
 –– RUSTY TOGRE ––
 
-    calc -v[1,2,3] [-w file] [stellung] [player_code] [-full]
-        Konstellation mit Version 1/2/3 berechnen. DB wird, sofern
-        angegeben, in file geschrieben. Bei Version 1 kann mit -full
-        der gesamte Spielbaum (ohne Short-Circuiting) berechnet werden
-        (dauert viel länger).
+    calc [-s [0, 1, 2, 3]] [-norev] [-w file] [stellung] [player_code] [-full]
+        Konstellation TOGRE-berechnen.
+        -s: Symmeth angeben (0=Keine, 1=Nur X, 2=Nur Y, 3=Beide)
+        -norev: reviter deaktivieren (dies führt zu Verlangsamung)
+        -w `file`: DB speichern.
+        -full: Kein Short-Circuiting (dies führt zu Verlangsamung)
 
     inspect [db_path] [stellung] [player_code]
         Liest die TogreDB aus der angegebenen DB ein und gibt

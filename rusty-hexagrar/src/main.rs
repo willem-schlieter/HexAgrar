@@ -112,8 +112,10 @@ fn main() {
 
     match args[0] {
         "test" => {
-            let p = Pos::from("0dg235.jruwyz");
-            println!("{}", p.mirror_y().write());
+            println!("START TEST");
+            for x in 5..0 {
+                println!("{}", x);
+            }
         }
         "args" => {
             println!("{:?}", args);
@@ -122,13 +124,26 @@ fn main() {
             println!("{}{}============================================================================ =================================================================={}{}", style::Bold, color::Bg(color::Yellow), color::Bg(color::Reset), style::Reset);
         }
         "calc" => {
-            // match args[1] {
-            //     "-v2" => { args.remove(0); ha2::T::calc_tool(&mut args) },
-            //     "-v3" => { args.remove(0); ha3::T::calc_tool(&mut args) },
-            //     "-v1" => { args.remove(0); T::calc_tool(&mut args) },
-            //     _ => { T::calc_tool(&mut args) }
-            // }
+            let mut db = T::DB::new();
+
+            if args[1] == "-s" {
+                let symmeth = args[2].parse::<u8>().expect(format!("Unzuläsige Symmeth: {}", args[1]).as_str());
+                if symmeth > 3 { panic!("Unzulässige Symmeth: {}", symmeth); }
+                args.remove(0);
+                args.remove(0);
+                db.symmeth = symmeth;
+            }
             
+            if args[1] == "-norev" {
+                db.reviter = false;
+                args.remove(0);
+            }
+
+            if args[1] == "-prefmat" {
+                db.prefmat = true;
+                args.remove(0);
+            }
+
             let mut write = false;
             let mut file = String::from("");
             if args[1] == "-w" {
@@ -138,9 +153,6 @@ fn main() {
                 args.remove(0);
             }
             
-            let mut db = T::DB::new();
-            db.set(H::Pos::from("8k.l"), &H::Player::O, &H::Togre::X);
-
             let before = Instant::now();
             let res = db.calc(&H::Pos::from(args[1]), &H::Player::from(args[2]), args[3] == "-full");
 
@@ -247,108 +259,7 @@ fn main() {
 
             std::fs::write(path, hk.write(format!("Zugtiefen-Halbkries ('HK2'): {}/{} (tiefe={})", poscode, p.c(), tiefe))).expect(format!("Datei konnte nicht beschrieben werden: {}", path).as_str());
         }
-        "stepALT" => {
-            println!("Willkommen bei TOGREstep!\nLade Dateien…");
-
-            let mut clock = Clock::new();
-
-            // Bedingung, damit Einträge dauerhaft in der helper_DB gespeichert werden.
-            let helper_condition = |p: &Pos| -> bool {
-                // Sind mehr als 7 Figuren auf dem Feld?
-                p.0.len() + p.1.len() > 7
-            };
-
-            let mut hk = HK::Halbkreis2::from(read_file("step_hk.hkdb"));
-            let mut helper_db = T::DB::from(read_file("step_helperdb.togredb"));
-            let mut result_db = T::DB::from(read_file("step_result.togredb"));
-
-            // let mut current = (Pos::from("ef.kl"), H::Player::X);
-
-            println!("Es kann losgehen!");
-
-            'l: loop {
-                if let Some(current) = hk.c.drop_one() {
-                    let mut input = String::from("");
-                    while input != "j" && input != "n" && input != "q" && input != "z" {
-                        println!("\nStellung {}/{} berechnen?", current.0.write(), current.1.c());
-                        println!("[j]a    [z]eitlang    [n]ein, nächste    [q]uit");
-                        input = read_line();
-                    }
-                    match input.as_str() {
-                        "j" => {
-                            println!("Berechnung wird gestartet…");
-                            clock.reset();
-                            let res = helper_db.calc(&current.0, &current.1, false);
-                            result_db.set(current.0, &current.1, &res.t);
-                            println!("{}", message(res, clock.since()));
-                            
-                            println!("Ergebnisse werden gespeichert…");
-                            write_file("step_hk.hkdb", hk.write(String::from("TOGREstep Session.")));
-                            write_file("step_result.togredb", result_db.write());
-                            write_file("step_helperdb.togredb", T::DB::new().import_filtered(&helper_db, helper_condition).write());
-                        }
-                        "n" => {
-                            hk.c.add(current.0, &current.1);
-                        }
-                        "z" => {
-                            // Hier brauchen wir current nicht.
-                            hk.c.add(current.0, &current.1);
-
-                            // Zeit, die gerechnet werden soll, in ms.
-                            let mut time: u128 = 0;
-                            let mut elapsed: u128 = 0;
-
-                            println!("\n'TOGREstep Zeitlang' ermöglicht dir, TOGREstep eine bestimmte Zeit lang rechnen zu lassen, ohne nach jedem Schritt gefragt zu werden, ob du weiter machen möchtest.");
-                            'w: while time == 0 {
-                                println!("Wie viele Sekunden soll 'Zeitlang' rechnen?");
-                                if let Ok(t) = read_line().parse::<u128>() {
-                                    time = t * 1000;
-                                    break 'w;
-                                } else {
-                                    println!("Bitte gib eine gültige Zahl ein!");
-                                }
-                            }
-                            
-                            let mut times: u32 = 0;
-                            while elapsed < time {
-                                times += 1;
-                                if let Some(current) = hk.c.drop_one() {
-                                    println!("\nBerechne {}/{}…", &current.0.write(), current.1.c());
-                                    clock.reset();
-                                    let res = helper_db.calc(&current.0, &current.1, false);
-                                    result_db.set(current.0, &current.1, &res.t);
-                                    println!("{}", message(res, clock.since()));
-                                    elapsed += clock.since();
-
-                                    if times % 10 == 0 {
-                                        println!("Zur Sicherheit zwischendurch speichern…");
-                                        write_file("step_hk.hkdb", hk.write(String::from("TOGREstep Session.")));
-                                        write_file("step_result.togredb", result_db.write());
-                                        write_file("step_helperdb.togredb", T::DB::new().import_filtered(&helper_db, helper_condition).write());
-                                    }
-
-                                } else {
-                                    println!("Die HKDB ist leer - Die Berechnung ist abgeschlossen! Herzlichen Glückwunsch!");
-                                    break 'l;
-                                }
-                            }
-                            println!("{} Stellungen berechnet. Ergebnisse werden gespeichert…", times);
-                            write_file("step_hk.hkdb", hk.write(String::from("TOGREstep Session.")));
-                            write_file("step_result.togredb", result_db.write());
-                            write_file("step_helperdb.togredb", T::DB::new().import_filtered(&helper_db, helper_condition).write());
-                        }
-                        _ => {
-                            // Speichern ist wohl nicht nötig, weil bei "j" schon immer gespeichert wird.
-                            break 'l;
-                        }
-                    }
-                } else {
-                    println!("Die HKDB ist leer - Die Berechnung ist abgeschlossen! Herzlichen Glückwunsch!");
-                    break 'l;
-                }
-            }
-        }
-
+        
         "step" => {
             println!("Willkommen bei TOGREstep!\nBEACHTE: Beende TOGREstep nicht mit ^C oder Ähnlichem, sondern indem du 'q' eingibst! Nur so können alle Berechnungserfolge gespeichert werden. (Beim zwischenzeitigen Abbrechen werden zwar die berechneten HK-Stellungen gesichert, nicht aber die HelperDB.)\nLade Dateien…");
 
@@ -442,7 +353,31 @@ fn main() {
                 }
             }
         }
-        
+        "reduce_helper_db" => {
+            println!("Starte die Reduktion der HelperDB.");
+            let mut clock = Clock::new();
+
+            println!("Lade die alte DB…");
+            let old = T::DB::from(read_file("step_files/step_helperdb.togredb"));
+            println!("Alte DB geladen nach {}ms.", clock.since());
+            clock.reset();
+
+            println!("Importiere alte in neue DB und reduziere dabei…");
+            let mut new = T::DB::new();
+            new.import(old);
+            println!("Vorgang nach {}ms abgeschlossen.", clock.since());
+            clock.reset();
+
+            println!("Kodiere neue DB…");
+            let out = new.write();
+            println!("Neue DB kodiert in {}ms.", clock.since());
+            clock.reset();
+
+            println!("Speichere neue DB in Datei…");
+            write_file("step_files/step_helperdb.togredb", out);
+            println!("Schreiben nach {}ms abgeschlossen.", clock.since());
+        }
+
         "calc_hk_unit" => {
             let unit_size = args[1].to_string().parse::<usize>().expect(&format!("Invalid unit_size input: {}", args[1]));
             let mut hk = HK::Halbkreis::from(std::fs::read_to_string("CALC.hkdb").expect("CALC.hkdb konnte nicht gelesen werden."));
