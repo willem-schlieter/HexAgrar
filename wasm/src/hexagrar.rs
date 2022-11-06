@@ -23,18 +23,20 @@ pub mod H {
         
         /// Dekodiert eine Collection aus einem kodierten `String` (Gegenstück zu `write_collection`).
         pub fn collection_from(code: String) -> Vec<Pos> {
-            code.split("/").map(|c| Pos::from(c)).collect()
+            code.split("/").map(|c| Pos::from(c).unwrap()).collect()
         }
         
         /// Erstellt eine leere Stellung.
         pub fn new() -> Pos { Pos(vec![], vec![]) }
         
         /// Erstellt eine Stellung aus einem gegebenen Code.
-        pub fn from(code: &str) -> Pos {
+        pub fn from(code: &str) -> Result<Pos, String> {
             if code == "-" { return Pos::from("012345.uvwxyz") }
+
             let mut parts = code.split(".").collect::<Vec<&str>>();
             while parts.len() < 2 { parts.push("") };
-            if parts.len() > 2 { panic!("Stellungscode {} ungültig.", code) }
+            if parts.len() > 2 { return Err(format!("Stellungscode {} ungültig.", code)); }
+
             let mut res = [vec![], vec![]];
             for i in 0..2 {
                 for ch in parts[i].chars() {
@@ -48,11 +50,11 @@ pub mod H {
                                 }
                             }
                         },
-                        None => panic!("Stellungscode {} ungültig.", code)
+                        None => return Err(format!("Stellungscode {} ungültig.", code))
                     }
                 }
             }
-            Pos(res[0].clone(), res[1].clone())
+            Ok(Pos(res[0].clone(), res[1].clone()))
         }
         
         /// Gibt den Code der Stellung aus.
@@ -292,11 +294,11 @@ pub mod H {
         pub fn score(&self) -> BTRS::Score {
             self.togre().score()
         }
-        pub fn from(code: &str) -> Player {
+        pub fn from(code: &str) -> Result<Player, String> {
             match code {
-                "X" | "x" => Player::X,
-                "O" | "o" => Player::O,
-                _ => panic!("Invalid player code: {}", code)
+                "X" | "x" => Ok(Player::X),
+                "O" | "o" => Ok(Player::O),
+                _ => Err(format!("Invalid player code: {}", code))
             }
         }
     }
@@ -366,14 +368,26 @@ pub mod T {
                 times: (0, 0, 0),
                 symmeth: 3,
                 reviter: true,
-                prefmat: false
+                prefmat: true
             }
         }
         
         /// Dekodiert eine `DB` aus einem kodierten `String` (Gegenstück zu `write`).
         pub fn from(code: String) -> DB {
             let mut db = DB::new();
-            let parts = code.split("%%").collect::<Vec<&str>>()[1].to_string().split("#").map(|s| s.to_string()).collect::<Vec<String>>().iter().map(|part| part.split("/").map(|c| Pos::from(c)).collect::<Vec<Pos>>()).collect::<Vec<Vec<Pos>>>();
+            let mut parts = code.split("%%")
+                .collect::<Vec<&str>>()[1]
+                .to_string()
+                .split("#")
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>()
+                .iter()
+                .map(|part| part.split("/")
+                .map(|c| Pos::from(c)
+                .unwrap())
+                .collect::<Vec<Pos>>())
+                .collect::<Vec<Vec<Pos>>>();
+            while parts.len() < 6 { parts.push(vec![]); }
             // x_x
             for pos in &parts[0] { db.x.insert(pos.clone(), Togre::X); }
             // x_o
@@ -394,6 +408,12 @@ pub mod T {
             self.x.len() + self.o.len()
         }
         
+        /// ***LÖSCHT*** alle Inhalte.
+        pub fn clear(&mut self) {
+            self.x.clear();
+            self.o.clear();
+        }
+
         /// Gibt eine `Some(Togre)` zurück, wenn `pos`/`p` in der `DB` enthalten sind, sonst `None`.
         pub fn get(&mut self, pos: &H::Pos, p: &H::Player) -> Option<H::Togre> {
             self.times.1 += 1;
@@ -481,6 +501,23 @@ pub mod T {
             self
         }
 
+        /// Importiert sämtliche Inhalte der DB `other` in diese DB.
+        /// Beschleunigter Import, da Symmetriekürzungen vorübergehend deaktiviert werden.
+        pub fn import_fast(&mut self, other: DB) -> &mut Self {
+            self.import_filtered_fast(&other, |_| true)
+        }
+
+        /// Importiert alle Einträge aus `other`, die die `condition` erfüllen, in diese DB.
+        /// Beschleunigter Import, da Symmetriekürzungen vorübergehend deaktiviert werden.
+        pub fn import_filtered_fast<C>(&mut self, other: &DB, condition: C) -> &mut Self
+        where C: Fn(&Pos) -> bool {
+            let old_symmeth = self.symmeth;
+            self.symmeth = 0;
+            self.import_filtered(other, condition);
+            self.symmeth = old_symmeth;
+            self
+        }
+
         pub fn calc(&mut self, pos: &Pos, p: &H::Player, full: bool) -> CalcResult {
             let old_len = self.len();
             let t = match pos.won() {
@@ -492,7 +529,7 @@ pub mod T {
                     }
                 }
             };
-            self.set(Pos::from(&pos.write()), &p, &t);
+            self.set(Pos::from(&pos.write()).unwrap(), &p, &t);
             CalcResult {
                 pos: pos.write(),
                 p: p.c(),
@@ -722,7 +759,7 @@ pub mod T {
             }
         };
 
-        db.set(Pos::from(&pos.write()), &p, &t);
+        db.set(Pos::from(&pos.write()).unwrap(), &p, &t);
         CalcResult {
             pos: pos.write(),
             p: p.c(),
@@ -811,7 +848,7 @@ pub mod T {
             }
         };
 
-        root_db.set(Pos::from(&pos.write()), &p, &t);
+        root_db.set(Pos::from(&pos.write()).unwrap(), &p, &t);
 
         CalcResult {
             pos: pos.write(),
@@ -915,7 +952,7 @@ pub mod HK {
         /// Dekodiert einen `Halbkreis` aus dem gegeben `code` (Gegenstück zu `write`).
         pub fn from(code: String) -> Halbkreis {
             // Die ersten drei Angaben sind fiktiv. Da ich kein System habe, um aus einem String-Kodierten HK diese Angaben zu extrahieren, habe ich die entsprechenden Felder im struct als private markiert und die Angaben unten gefaket.
-            Halbkreis { compl: 8, start_pos: Pos::from("-"), start_player: Player::X, arms: Set::new(), c: Set::from(code.split("%%").collect::<Vec<&str>>()[1].to_string())}
+            Halbkreis { compl: 8, start_pos: Pos::from("-").unwrap(), start_player: Player::X, arms: Set::new(), c: Set::from(code.split("%%").collect::<Vec<&str>>()[1].to_string())}
         }
         
         /// Kodiert den `Halbkreis` in einen `String`.
@@ -958,7 +995,7 @@ pub mod HK {
         /// Dekodiert einen `Halbkreis` aus dem gegeben `code` (Gegenstück zu `write`).
         pub fn from(code: String) -> Halbkreis2 {
             // Die ersten drei Angaben sind fiktiv. Da ich kein System habe, um aus einem String-Kodierten HK diese Angaben zu extrahieren, habe ich die entsprechenden Felder im struct als private markiert und die Angaben unten gefaket.
-            Halbkreis2 { tiefe: 8, start_pos: Pos::from("-"), start_player: Player::X, arms: Set::new(), c: Set::from(code.split("%%").collect::<Vec<&str>>()[1].to_string())}
+            Halbkreis2 { tiefe: 8, start_pos: Pos::from("-").unwrap(), start_player: Player::X, arms: Set::new(), c: Set::from(code.split("%%").collect::<Vec<&str>>()[1].to_string())}
         }
         
         /// Kodiert den `Halbkreis` in einen `String`.
@@ -1005,7 +1042,7 @@ pub mod HK {
             args.remove(0);
         }
         let (pos, player, compl) = (
-            Pos::from(args[1]),
+            Pos::from(args[1]).unwrap(),
             match args[2] {"X" => &Player::X, "O" => &Player::O, _ => panic!("Invalid Player Code: {}.", args[2])},
             args[3].to_string().parse::<usize>().expect(&format!("Invalid complexity threshold: {}", args[3]))
         );

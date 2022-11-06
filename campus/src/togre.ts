@@ -1,6 +1,7 @@
 import H from "./core";
-import preload from "./preload_db";
-import { TogreCalculator } from "wasm";
+import { TOGREInterface } from "wasm";
+
+const preload_DB_Path = "preload.togredb";
 
 namespace T {
     export interface CalcResult {
@@ -56,22 +57,27 @@ namespace T {
             }
         }
         preload () {
-            const fields = preload.split("%%")[1].split("#");
-            const keys = ["XX", "XO", "XR", "OX", "OO", "OR"];
-            let loaded = 0, error = 0;
-            keys.forEach((k, i) => {
-                fields[i].split("/").forEach(code => {
-                    if (code.match(H.codePattern)) {
-                        this.c[k[0]][k[1]].add(code);
-                        loaded ++;
-                    } else {
-                        console.error("Folgende Stellung konnte nicht aus der Preload-DB geladen werden, weil der Stellungscode ungültig ist: " + code);
-                        error ++;
-                    }
+            fetch(preload_DB_Path).then(res => {
+                if (! res.ok) throw new Error("Fetch-Response not OK: " + res);
+                else return res.text();
+            }).then(c => {
+                const fields = c.split("%%")[1].split("#");
+                const keys = ["XX", "XO", "XR", "OX", "OO", "OR"];
+                let loaded = 0, error = 0;
+                keys.forEach((k, i) => {
+                    fields[i].split("/").forEach(code => {
+                        if (code.match(H.codePattern)) {
+                            this.c[k[0]][k[1]].add(code);
+                            loaded ++;
+                        } else {
+                            console.error("Folgende Stellung konnte nicht aus der Preload-DB geladen werden, weil der Stellungscode ungültig ist: " + code);
+                            error ++;
+                        }
+                    });
                 });
-            });
-            console.info(`Preload von ${loaded} Stellungen erfolgreich. ${error} fehlerhaft.`);
-            if (error) console.warn(`Preload: ${error} Stellungscodes fehlerhaft.`);
+                console.info(`Preload von ${loaded} Stellungen erfolgreich. ${error} fehlerhaft.`);
+                if (error) console.warn(`Preload: ${error} Stellungscodes fehlerhaft.`);
+            })
         }
         get (stellung: H.Code, player: H.Player): H.Final | null {
             // ++ times.get;
@@ -137,7 +143,7 @@ namespace T {
                 const thread = (async function(db){
                     console.log("Hi aus dem Async Thread.");
                     while (folgestellungen.length) {
-                        const f = folgestellungen.shift();
+                        const f = folgestellungen.shift()!;
                         console.log(`Berechne ${H.convert.c(f)} im async thread.`);
                         db[(prefdb ? "i_prefdb" : "i")](f, p.t);
                     }
@@ -147,7 +153,7 @@ namespace T {
                 const thread2 = (async function(db){
                     console.log("Hi aus dem Async Thread 2.");
                     while (folgestellungen.length) {
-                        const f = folgestellungen.shift();
+                        const f = folgestellungen.shift()!;
                         console.log(`Berechne ${H.convert.c(f)} im async thread 2.`);
                         db[(prefdb ? "i_prefdb" : "i")](f, p.t);
                     }
@@ -155,7 +161,7 @@ namespace T {
                 })(this);
                 console.log("Jetzt der Main Thread.");
                 while (folgestellungen.length) {
-                    const f = folgestellungen.shift();
+                    const f = folgestellungen.shift()!;
                     console.log(`Berechne ${H.convert.c(f)} im main thread.`);
                     this[(prefdb ? "i_prefdb" : "i")](f, p.t);                }
                 console.log("Main Thread Ende. Warte auf den Async Thread...")
@@ -380,14 +386,30 @@ namespace T {
     }
 
     export const stdDB = new DB("Die Standard-Datenbank, die im Namensraum T gesichert wird.");
+}
+export default T;
 
-    let rustyCalculator = TogreCalculator.new();
-    export function rustyTogre (s: H.Numpos, p: H.Player): [H.Final, number] {
-        const before = rustyCalculator.len();
-        return [["O", "R", "X"][rustyCalculator.calc(H.convert.c(s), p.c) + 1] as H.Final, rustyCalculator.len() - before];
+export namespace RustyT {
+    let wasm_interface: TOGREInterface | null = null;
+
+    /** Muss aufgerufen werden, bevor RustyTogre verwendet werden kann! */
+    export function init () {
+        fetch("preload.togredb").then(res => {
+            if (! res.ok) {
+                console.error(res);
+                throw new Error("Fetch-Response not OK.");
+            }
+            else return res.text();
+        }).then(c => {
+            console.log("preload.togredb Inhalt: ", c);
+            wasm_interface = TOGREInterface.new(c, 3, true, true);
+        });
+    }
+
+    /** Rückgabe: [Ergebnis, Anzahl Einträge] */
+    export function calc (s: H.Numpos, p: H.Player): [H.Final, number] {
+        if (! wasm_interface) { throw new Error("RustyTpgreDB wurde noch nicht geladen."); }
+        const before = wasm_interface.len();
+        return [["O", "R", "X"][wasm_interface.calc(H.convert.c(s), p.c) + 1] as H.Final, wasm_interface.len() - before];
     }
 }
-
-
-
-export default T;

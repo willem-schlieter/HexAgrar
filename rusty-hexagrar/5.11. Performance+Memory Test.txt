@@ -1,0 +1,88 @@
+./build 
+   Compiling rusty-togre v0.1.0 (/Users/willemsch/Storage/Projects/HexAgrar/HexAgrar/rusty-hexagrar)
+./build 
+   Compiling rusty-togre v0.1.0 (/Users/willemsch/Storage/Projects/HexAgrar/HexAgrar/rusty-hexagrar)
+    Finished release [optimized] target(s) in 16.29s
+calc 1234.vwxy X
+Stellung 1234.vwxy mit Player x in  310ms  berechnet:   R     - 68436 neue Einträge. Aufruf-Profil: (68436, 185709, 68436)
+calc 1234.vwxy X
+./build 
+   Compiling rusty-togre v0.1.0 (/Users/willemsch/Storage/Projects/HexAgrar/HexAgrar/rusty-hexagrar)
+    Finished release [optimized] target(s) in 17.95s
+calc -s 3 -prefmat 12345.vwxyz X
+Stellung 12345.vwxyz mit Player x in  16465ms  berechnet:   R     - 3067538 neue Einträge. Aufruf-Profil: (3067538, 9392271, 3067538)
+calc ab2367.opstwx
+thread 'main' panicked at 'Invalid player code: ', src/hexagrar.rs:299:22
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+calc ab2367.opstwx X
+Stellung 2367ab.opstwx mit Player x in  5623ms  berechnet:   R     - 1082089 neue Einträge. Aufruf-Profil: (1082089, 2980035, 1082089)
+calc ach237.opstwx X
+Stellung 237ach.opstwx mit Player x in  1984ms  berechnet:   R     - 364894 neue Einträge. Aufruf-Profil: (364894, 932371, 364894)
+calc -s 0 ach237.opstwx X
+Stellung 237ach.opstwx mit Player x in  1455ms  berechnet:   R     - 804663 neue Einträge. Aufruf-Profil: (804663, 2055430, 804663)
+calc -s 1 ach237.opstwx X
+Stellung 237ach.opstwx mit Player x in  1035ms  berechnet:   R     - 378621 neue Einträge. Aufruf-Profil: (378621, 960640, 378621)
+calc -s 2 ach237.opstwx X
+Stellung 237ach.opstwx mit Player x in  2198ms  berechnet:   R     - 778254 neue Einträge. Aufruf-Profil: (778254, 2001940, 778254)
+calc -s 3 ach237.opstwx X
+Stellung 237ach.opstwx mit Player x in  1673ms  berechnet:   R     - 364894 neue Einträge. Aufruf-Profil: (364894, 932371, 364894)
+sep
+============================================================================ ==================================================================
+calc -s 0 ab2367.opstwx X
+Stellung 2367ab.opstwx mit Player x in  6557ms  berechnet:   R     - 3216985 neue Einträge. Aufruf-Profil: (3216985, 8712180, 3216985)
+calc -s 1 ab2367.opstwx X
+Stellung 2367ab.opstwx mit Player x in  5024ms  berechnet:   R     - 1680844 neue Einträge. Aufruf-Profil: (1680844, 4541078, 1680844)
+calc -s 2 ab2367.opstwx X
+Stellung 2367ab.opstwx mit Player x in  7137ms  berechnet:   R     - 2159246 neue Einträge. Aufruf-Profil: (2159246, 5943915, 2159246)
+calc -s 3 ab2367.opstwx X
+Stellung 2367ab.opstwx mit Player x in  5878ms  berechnet:   R     - 1082089 neue Einträge. Aufruf-Profil: (1082089, 2980035, 1082089)
+sep
+============================================================================ ==================================================================
+calc -s 0 123.vwx X
+Stellung 123.vwx mit Player x in  13ms  berechnet:   R     - 7630 neue Einträge. Aufruf-Profil: (7630, 17148, 7630)
+calc -s 1 123.vwx X
+Stellung 123.vwx mit Player x in  23ms  berechnet:   R     - 7488 neue Einträge. Aufruf-Profil: (7488, 16927, 7488)
+calc -s 2 123.vwx X
+Stellung 123.vwx mit Player x in  11ms  berechnet:   R     - 4460 neue Einträge. Aufruf-Profil: (4460, 10191, 4460)
+calc -s 3 123.vwx X
+Stellung 123.vwx mit Player x in  20ms  berechnet:   R     - 4378 neue Einträge. Aufruf-Profil: (4378, 10064, 4378)
+sep
+============================================================================ ==================================================================
+calc -s 0 23.wx X
+Stellung 23.wx mit Player x in  0ms  berechnet:   O     - 152 neue Einträge. Aufruf-Profil: (152, 266, 152)
+calc -s 1 23.wx X
+Stellung 23.wx mit Player x in  0ms  berechnet:   O     - 111 neue Einträge. Aufruf-Profil: (111, 197, 111)
+calc -s 2 23.wx X
+Stellung 23.wx mit Player x in  0ms  berechnet:   O     - 118 neue Einträge. Aufruf-Profil: (118, 215, 118)
+calc -s 3 23.wx X
+Stellung 23.wx mit Player x in  0ms  berechnet:   O     - 72 neue Einträge. Aufruf-Profil: (72, 134, 72)
+sep
+============================================================================ ==================================================================
+calc -s 0 ab6789.opqrst X
+Stellung 6789ab.opqrst mit Player x in  657ms  berechnet:   R     - 367643 neue Einträge. Aufruf-Profil: (367643, 900734, 367643)
+calc -s 1 ab6789.opqrst X
+Stellung 6789ab.opqrst mit Player x in  511ms  berechnet:   R     - 189847 neue Einträge. Aufruf-Profil: (189847, 464309, 189847)
+calc -s 2 ab6789.opqrst X
+Stellung 6789ab.opqrst mit Player x in  888ms  berechnet:   R     - 299477 neue Einträge. Aufruf-Profil: (299477, 750496, 299477)
+calc -s 3 ab6789.opqrst X
+Stellung 6789ab.opqrst mit Player x in  807ms  berechnet:   R     - 156086 neue Einträge. Aufruf-Profil: (156086, 391590, 156086)
+sep
+============================================================================ ==================================================================
+calc -s 0 1ab689.opqrst
+thread 'main' panicked at 'Invalid player code: ', src/hexagrar.rs:299:22
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+calc -s 0 1ab689.opqrst O
+Stellung 1689ab.opqrst mit Player O in  1335ms  berechnet:   R     - 715038 neue Einträge. Aufruf-Profil: (715038, 1803571, 715038)
+calc -s 1 1ab689.opqrst O
+Stellung 1689ab.opqrst mit Player O in  1532ms  berechnet:   R     - 526459 neue Einträge. Aufruf-Profil: (526459, 1342367, 526459)
+calc -s 2 1ab689.opqrst O
+Stellung 1689ab.opqrst mit Player O in  1869ms  berechnet:   R     - 633396 neue Einträge. Aufruf-Profil: (633396, 1625376, 633396)
+calc -s 3 1ab689.opqrst O
+Stellung 1689ab.opqrst mit Player O in  2204ms  berechnet:   R     - 454659 neue Einträge. Aufruf-Profil: (454659, 1181748, 454659)
+
+
+Erkenntnis: Sie Symmetrie-Kürzungen bringen in dieser Rechen-Konstellation (Berechnung einer einzelnen Stellung mit extra DB) nur etwas, wenn bestimmte Vss. erfüllt sind:
+- X-Mirror bringt nur viel, wenn Startstellung X-Symmetrisch.
+- Y-Mirror bringt nur viel, wenn Startstellung Y-Symmetrisch und möglichst viele Figuren in der Startreihe stehen, weil dann mehr Möglichkeiten bestehen, den Spieler "zu wechseln".
+- Je weniger diese Vss. erfüllt sind, desto weniger bringt die jeweilige Methode bei der Einsparung von Einträgen. Jedoch sind es in jedem Fall weniger, weil es immer seltene Fälle von Symmetrien gibt. Die Rechenzeit hingegen kann sich uU beträchtlich verlängern, weil ständig erfolglos Symmetrien geprüft werden, was die Berechnung (wegen der Erfolglosigkeit) nicht beschleunigt.
+- Ich muss mir überlegen, wie sich dies auf die Konstellation der HK-Berechnung mit geteilter HelperDB übertragen lässt. Vllt ist es da anders, weil die Startstellung, auf die der HK und daher die gesamte HelperDB zurück gehen, alle o.g. Vss. perfekt erfüllt.

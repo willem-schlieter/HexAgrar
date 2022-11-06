@@ -27,12 +27,16 @@ export class BTRSInterface {
 }
 /**
 */
-export class TogreCalculator {
+export class TOGREInterface {
   free(): void;
 /**
-* @returns {TogreCalculator}
+* @param {string} db_code
+* @param {number} symmeth
+* @param {boolean} reviter
+* @param {boolean} prefmat
+* @returns {TOGREInterface}
 */
-  static new(): TogreCalculator;
+  static new(db_code: string, symmeth: number, reviter: boolean, prefmat: boolean): TOGREInterface;
 /**
 * @param {string} poscode
 * @param {string} p

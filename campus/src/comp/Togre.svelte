@@ -1,7 +1,7 @@
 <script lang="ts">
     import DevOutTable from "./DevOutTable.svelte";
     import { amZug, state, stellung, togreRunning } from "../stores";
-    import T from "../togre";
+    import T, { RustyT } from "../togre";
     import H from "../core";
     import { download } from "../tools";
 
@@ -12,7 +12,7 @@
         window.setTimeout(() => {
             if (useRust) {
                 const before = Date.now();
-                const [res, entries] = T.rustyTogre($stellung, $amZug);
+                const [res, entries] = RustyT.calc($stellung, $amZug);
                 out.log([
                     H.convert.c($stellung) + "<br>Player." + $amZug.c,
                     "<b>RustyTogre</b>",
@@ -42,7 +42,7 @@
     }
 
     function save () {
-        download("Download.togreDB.json", db.stringify(prompt("Bitte gib einen Kommentar für diesen Download an. Er wird zusammen mit den Datenbankinhalten in der heruntergeladenen Datei gesichert, damit du später nachvollziehen kannst, woher dieser Download stammt.")));
+        download("Download.togreDB.json", db.stringify(String(prompt("Bitte gib einen Kommentar für diesen Download an. Er wird zusammen mit den Datenbankinhalten in der heruntergeladenen Datei gesichert, damit du später nachvollziehen kannst, woher dieser Download stammt."))));
     }
 
     let out: DevOutTable;

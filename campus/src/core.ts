@@ -480,7 +480,7 @@ namespace H {
      *          unter `fortschritt`.
      */
     export function grueneFelder (stellung: Numpos, p: Player): {feld: number, fortschritt: number}[] {
-        const gruene = [];
+        const gruene: {feld: number, fortschritt: number}[] = [];
         for (let feld = 0; feld < 36; feld ++) {
             const r = gruen(stellung, feld, p);
             if (typeof r === "number") gruene.push({

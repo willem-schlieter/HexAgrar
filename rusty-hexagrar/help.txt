@@ -4,6 +4,7 @@
         Konstellation TOGRE-berechnen.
         -s: Symmeth angeben (0=Keine, 1=Nur X, 2=Nur Y, 3=Beide)
         -norev: reviter deaktivieren (dies führt zu Verlangsamung)
+        -noprefmat: prefmat deaktivieren (führt zu Verlangsamung)
         -w `file`: DB speichern.
         -full: Kein Short-Circuiting (dies führt zu Verlangsamung)
 

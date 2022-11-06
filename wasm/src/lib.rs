@@ -10,17 +10,24 @@ extern {
 }
 
 #[wasm_bindgen]
-pub struct TogreCalculator {
+pub struct TOGREInterface {
     db: hexagrar::T::DB
 }
 #[wasm_bindgen]
-impl TogreCalculator {
-    pub fn new() -> TogreCalculator {
+impl TOGREInterface {
+    pub fn new(db_code: &str, symmeth: u8, reviter: bool, prefmat: bool) -> TOGREInterface {
         utils::set_panic_hook();
-        TogreCalculator { db: hexagrar::T::DB::new() }
+        let mut res = TOGREInterface { db: hexagrar::T::DB::from(db_code.to_string()) };
+        if symmeth != 0 && symmeth != 1 && symmeth != 2 && symmeth != 3 {
+            panic!("Ungültige Symmeth: {}", symmeth);
+        }
+        res.db.symmeth = symmeth;
+        res.db.reviter = reviter;
+        res.db.prefmat = prefmat;
+        res
     }
     pub fn calc(&mut self, poscode: &str, p: &str) -> i8 {
-        match self.db.calc(&hexagrar::H::Pos::from(poscode), &hexagrar::H::Player::from(p), false).t {
+        match self.db.calc(&hexagrar::H::Pos::from(poscode).unwrap(), &hexagrar::H::Player::from(p).unwrap(), false).t {
             hexagrar::H::Togre::X => 1,
             hexagrar::H::Togre::O => -1,
             hexagrar::H::Togre::R => 0
@@ -44,12 +51,12 @@ impl BTRSInterface {
     }
 
     pub fn answer(&mut self, poscode: &str, p: &str, tiefe: u8, compl: u8) -> String {
-        BTRS::answer(&mut self.db, H::Pos::from(poscode), &H::Player::from(p), tiefe, compl).write()
+        BTRS::answer(&mut self.db, H::Pos::from(poscode).unwrap(), &H::Player::from(p).unwrap(), tiefe, compl).write()
     }
 
     pub fn calc(&mut self, poscode: &str, p: &str, tiefe: u8, compl: u8) -> i8 {
         // self.c.calc(&hexagrar::H::Pos::from(poscode), &hexagrar::H::Player::from(p))
-        BTRS::calc(&mut self.db, &H::Pos::from(poscode), &H::Player::from(p), tiefe, compl)
+        BTRS::calc(&mut self.db, &H::Pos::from(poscode).unwrap(), &H::Player::from(p).unwrap(), tiefe, compl)
     }
 
 }

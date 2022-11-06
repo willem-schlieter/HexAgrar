@@ -1,5 +1,5 @@
 import H from "./core";
-import T from "./togre";
+import T, { RustyT } from "./togre";
 import { later, random, wait } from "./tools";
 import { BTRSInterface } from "wasm";
 let btrs = BTRSInterface.new();
@@ -106,24 +106,15 @@ export const A: { [index: string]: Automat } = {
         });
     },
     hybrid_TE(s, p, o) {
-        if (H.complex(s) > 9) return A.kea400_sea(s, p, o);
+        if (H.complex(s) > 12) return A.kea400_sea(s, p, o);
         else {
-            // const t = T.stdDB.calc(H.convert.c(s), p, "pure", true).t;
-            // console.log(t);
-            
-            // const bf = bestFraction(o, p);
-            // // console.log("bestFraction sagt: Die besten Optionen haben TOGRE " + bf[1]);
-            
-            // if (bf[1] === p.c) return K.random(bf[0]);
-            // else return A.kea400_sea(s, p, bf[0]);
-            
             console.log("Spiele TOGRE-vollständig");
-            const t = T.rustyTogre(s, p)[0];
+            const t = RustyT.calc(s, p)[0];
             console.log("TOGRE der aktuellen Stellung: ", t);
 
             let remis: H.Option[] = [];
             for (let option of o) {
-                const t = T.rustyTogre(option.ziel, p.t)[0];
+                const t = RustyT.calc(option.ziel, p.t)[0];
                 if (t == p.c) return option;
                 else if (t === "R") remis.push(option);
             }

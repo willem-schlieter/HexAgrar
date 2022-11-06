@@ -1,10 +1,15 @@
 pub mod hexagrar;
 use hexagrar::*;
-use H::Pos;
+use H::{Pos, Player};
 use std::time::Instant;
 
 extern crate termion;
 use termion::{color, style};
+
+const PATH_RESULT: &str = "step_files/result.togredb";
+const PATH_HK: &str = "step_files/hk.hkdb";
+const PATH_HELPER: &str = "step_files/helper.togredb";
+const PATH_STATS: &str = "step_files/stats.txt";
 
 struct Clock {
     start: Instant
@@ -14,6 +19,17 @@ impl Clock {
     pub fn since(&self) -> u128 { Instant::now().duration_since(self.start).as_millis() }
     pub fn reset(&mut self) { self.start = Instant::now(); }
 }
+
+/* ARGUMENT MANAGER
+Konstellationen:
+-flag
+-key=value
+    value is string
+    value is number type
+    value in number slice
+    value in […, …, …]
+unknown type arg
+ */
 
 fn emph(text: String) -> String {
     format!("{}{} {} {}{}",
@@ -97,11 +113,48 @@ fn write_file(path: &str, content: String) {
     std::fs::write(String::from(path), content).expect(format!("Datei {} konnte nicht beschrieben werden.", path).as_str());
 }
 
-fn read_line() -> String {
-    let mut s = String::from("");
-    std::io::stdin().read_line(&mut s).expect("Input konnte nicht gelesen werden.");
-    s.pop();
-    s
+#[allow(non_snake_case)]
+mod IO {
+    pub fn read_line() -> String {
+        let mut s = String::from("");
+        std::io::stdin().read_line(&mut s).expect("Input konnte nicht gelesen werden.");
+        s.pop();
+        s
+    }
+    
+    pub fn read(prompt: &str) -> String {
+        let mut s = String::from("");
+        print!("{}", prompt);
+        std::io::Write::flush(&mut std::io::stdout()).unwrap();
+        std::io::stdin().read_line(&mut s).expect("Input konnte nicht gelesen werden.");
+        s.pop();
+        s
+    }
+    
+    // pub fn read_num<T: std::str::FromStr>(prompt: &str, warning: &str) -> T {
+    //     loop {
+    //         if let Ok(num) = read(prompt).parse::<T>() {
+    //             return num;
+    //         } else {
+    //             println!("{}", if warning == "" { "Bitte gib eine gültige Zahl ein." } else { warning });
+    //         }
+    //     }
+    // }
+    
+    pub fn read_certain(options: &Vec<&str>, prompt: &str, warning: &str) -> String {
+        let mut inp: String;
+        loop {
+            inp = read(prompt);
+            for op in options {
+                if op == &&inp { return inp; }
+            }
+            println!("{}", if warning == "" { format!("Zulässige Eingaben sind: {:?}", options) } else { warning.to_string() });
+        };
+    }
+
+    pub fn confirm(prompt: &str) -> bool {
+        read(&format!("{} (Enter=OK) > ", prompt)) == ""
+    }
 }
 
 fn main() {
@@ -112,10 +165,7 @@ fn main() {
 
     match args[0] {
         "test" => {
-            println!("START TEST");
-            for x in 5..0 {
-                println!("{}", x);
-            }
+            println!("len: {}", IO::read("abcde > ").len());
         }
         "args" => {
             println!("{:?}", args);
@@ -139,8 +189,8 @@ fn main() {
                 args.remove(0);
             }
 
-            if args[1] == "-prefmat" {
-                db.prefmat = true;
+            if args[1] == "-noprefmat" {
+                db.prefmat = false;
                 args.remove(0);
             }
 
@@ -154,7 +204,7 @@ fn main() {
             }
             
             let before = Instant::now();
-            let res = db.calc(&H::Pos::from(args[1]), &H::Player::from(args[2]), args[3] == "-full");
+            let res = db.calc(&H::Pos::from(args[1]).unwrap(), &H::Player::from(args[2]).unwrap(), args[3] == "-full");
 
 
             println!("{}", message(res, Instant::now().duration_since(before).as_millis()));
@@ -168,8 +218,8 @@ fn main() {
             let mut db = BTRS::DB::new();
             let score = BTRS::calc(
                 &mut db,
-                &H::Pos::from(args[1]),
-                &H::Player::from(args[2]),
+                &H::Pos::from(args[1]).unwrap(),
+                &H::Player::from(args[2]).unwrap(),
                 args[3].to_string().parse::<u8>().expect(&format!("Unzulässiges Tiefenlimit: {}", args[3])),
                 args[4].to_string().parse::<u8>().expect(&format!("Unzulässiger compl-Grenzwert: {}", args[3]))
             );
@@ -186,7 +236,7 @@ fn main() {
             let before = Instant::now();
 
             // let res = T::calc_conc(&mut T::DB::new(), &H::Pos::from("1234.vwxy"), H::Player::X, 8);
-            let res = T::calc_para(&mut T::DB::new(), &H::Pos::from("1234.vwxy"), H::Player::X, threads);
+            let res = T::calc_para(&mut T::DB::new(), &H::Pos::from("1234.vwxy").unwrap(), H::Player::X, threads);
 
             println!("{}", message(res, Instant::now().duration_since(before).as_millis()));
 
@@ -214,7 +264,7 @@ fn main() {
                     else if p_code == "keep X" { keep = true; p_code = String::from("X"); }
                     else if p_code == "keep O" { keep = true; p_code = String::from("O"); }
                 }
-                let (pos, p) = (H::Pos::from(&pos_code), H::Player::from(&p_code));
+                let (pos, p) = (H::Pos::from(&pos_code).unwrap(), H::Player::from(&p_code).unwrap());
                 match pos.won() {
                     Some(won) => {
                         println!("{}/{}    -    {} hat gewonnen.", pos.write(), p.c(), won.togre().write());
@@ -247,9 +297,9 @@ fn main() {
         "hk" => {
             //    0  1     2 3 4
             // rt hk ef.kl X 6 out.hkdb
-            let pos = Pos::from(args[1]);
+            let pos = Pos::from(args[1]).unwrap();
             let poscode = pos.write();
-            let p = H::Player::from(args[2]);
+            let p = H::Player::from(args[2]).unwrap();
             let tiefe = args[3].parse::<usize>().expect(format!("Unzulässige Tiefe: {}", args[3]).as_str());
             let path = args[4];
 
@@ -261,7 +311,7 @@ fn main() {
         }
         
         "step" => {
-            println!("Willkommen bei TOGREstep!\nBEACHTE: Beende TOGREstep nicht mit ^C oder Ähnlichem, sondern indem du 'q' eingibst! Nur so können alle Berechnungserfolge gespeichert werden. (Beim zwischenzeitigen Abbrechen werden zwar die berechneten HK-Stellungen gesichert, nicht aber die HelperDB.)\nLade Dateien…");
+            println!("Willkommen bei TOGREstep!\nBEACHTE: Beende TOGREstep nicht mit ^C oder Ähnlichem, sondern indem du 'q' eingibst! Nur so können alle Berechnungserfolge gespeichert werden. (Beim zwischenzeitigen Abbrechen werden zwar die berechneten HK-Stellungen gesichert, nicht aber die HelperDB.)");
 
             let mut clock = Clock::new();
 
@@ -271,17 +321,26 @@ fn main() {
                 p.0.len() + p.1.len() > 9
             };
 
-            let mut hk = HK::Halbkreis2::from(read_file("step_files/step_hk.hkdb"));
-            let mut helper_db = T::DB::from(read_file("step_files/step_helperdb.togredb"));
-            let mut result_db = T::DB::from(read_file("step_files/step_result.togredb"));
-            let mut total_time = read_file("step_files/step_stats").parse::<u128>().expect("Der Inhalt von step_stats ist ungültig.");
+            println!("Importiere und dekodiere Halbkreis… [{}]", clock.since());
+            let mut hk = HK::Halbkreis2::from(read_file(PATH_HK));
+
+            println!("Importiere und dekodiere Ergebnis-DB… [{}]", clock.since());
+            let mut result_db = T::DB::from(read_file(PATH_RESULT));
+            let mut total_time = read_file(PATH_STATS).parse::<u128>().expect("Der Inhalt von step_stats ist ungültig.");
+
+            println!("Importiere HelperDB… [{}]", clock.since());
+            let helper_db_code = read_file(PATH_HELPER);
+            println!("Dekodiere HelperDB… [{}]", clock.since());
+            let mut helper_db = T::DB::from(helper_db_code);
+            
+            println!("Vorbereitungen abgeschlossen. [{}]", clock.since());
 
             'l: loop {
                 let mut input = String::from("");
                 while input != "r" && input != "q" && input != "s" {
                     println!("\nWas möchtest du tun?");
                     println!("[r]echnen    [s]tatistik    [q]uit");
-                    input = read_line();
+                    input = IO::read_line();
                 }
 
                 match input.as_str() {
@@ -296,7 +355,7 @@ fn main() {
                         // Zeit lesen
                         'w: while time == 0 {
                             println!("Wie viele Sekunden soll gerechnet werden?");
-                            if let Ok(t) = read_line().parse::<u128>() {
+                            if let Ok(t) = IO::read_line().parse::<u128>() {
                                 time = t * 1000;
                                 break 'w;
                             } else {
@@ -314,9 +373,9 @@ fn main() {
                                 println!("{}", message(res, clock.since()));
                                 elapsed += clock.since();
 
-                                if times % 10 == 0 {
+                                if times % 5 == 0 {
                                     println!("Zur Sicherheit zwischendurch speichern… (Aber nur resultDB)");
-                                    write_file("step_result.togredb", result_db.write());
+                                    write_file(PATH_RESULT, result_db.write());
                                     // Um Zeit zu sparen, wird hier nur das Wichtigste gespeichert: Die Ergebnisse. Wenn vorzeitig abgebrochen wird, stehen im HK bereits berechnete Stellungen, was kein Problem ist, weil diese ja dann beim nächsten Mal in 0ms berechnet sind und aus dem HK entfernt werden.
                                     // Auch die HelperDB wird nicht gespeichert, weil das so ewig braucht.
                                 }
@@ -326,14 +385,10 @@ fn main() {
                                 break 'l;
                             }
                         }
-                        
                         total_time += elapsed;
                         println!("{} Stellungen in {}ms berechnet. Ergebnisse werden gespeichert…", times, elapsed);
-                        write_file("step_files/step_hk.hkdb", hk.write(String::from("TOGREstep Session.")));
-                        write_file("step_files/step_result.togredb", result_db.write());
-                        
-                        // Da das so lange dauert, wird die HelperDB hier nicht gespeichert. Das passiert nur, wenn man ordnungsgemäß beendet, s.u. Es ist auch nicht schlimm, wenn man vorzeitig abgebrochen wird, weil die HelperDB ja optional ist - dann dauert es beim nächsten mal vielleicht etwas länger.
-                        // write_file("step_files/step_helperdb.togredb", T::DB::new().import_filtered(&helper_db, helper_condition).write());
+                        write_file(PATH_HK, hk.write(String::from("TOGREstep Session.")));
+                        write_file(PATH_RESULT, result_db.write());
                     }
                     "s" => {
                         println!("\n-- TOGREstep STATISTIK --");
@@ -345,20 +400,18 @@ fn main() {
                         println!("Größe der HelperDB (zu diesem Zeitpunkt): {}", helper_db.len());
                         println!("Gesamte Rechenzeit seit Beginn:           {}ms = {}min", total_time, total_time / 60000);
                     }
-                    _ => {
-                        write_file("step_files/step_helperdb.togredb", T::DB::new().import_filtered(&helper_db, helper_condition).write());
-                        write_file("step_stats", total_time.to_string());
-                        break 'l;
-                    }
+                    _ => { break 'l; }
                 }
             }
+            write_file(PATH_HELPER, T::DB::new().import_filtered_fast(&helper_db, helper_condition).write());
+            write_file(PATH_STATS, total_time.to_string());
         }
         "reduce_helper_db" => {
             println!("Starte die Reduktion der HelperDB.");
             let mut clock = Clock::new();
 
             println!("Lade die alte DB…");
-            let old = T::DB::from(read_file("step_files/step_helperdb.togredb"));
+            let old = T::DB::from(read_file(PATH_HELPER));
             println!("Alte DB geladen nach {}ms.", clock.since());
             clock.reset();
 
@@ -374,7 +427,7 @@ fn main() {
             clock.reset();
 
             println!("Speichere neue DB in Datei…");
-            write_file("step_files/step_helperdb.togredb", out);
+            write_file(PATH_HELPER, out);
             println!("Schreiben nach {}ms abgeschlossen.", clock.since());
         }
 
@@ -407,7 +460,75 @@ fn main() {
             // println!("V2: {}", ha2::INFO);
             // println!("V3: {}", ha3::INFO);
         }
-        "" | "help" => {
+        
+        // INTERAKTIV
+        "" | "i" => {
+            let commands = vec!["quit", "load", "calc", "settings", "stat", "c", "clear db"];
+            let mut db = T::DB::new();
+            let prompt = &format!("{}{} {} {}{} > ",
+                color::Bg(color::Blue),
+                style::Bold,
+                "RustyHexAgrar CL",
+                style::Reset,
+                color::Bg(color::Reset)
+            );
+            'l: loop {
+                match IO::read_certain(&commands, prompt, "").as_str() {
+                    "quit" => break 'l,
+                    "load" => {
+                        let file_content: String;
+                        'r: loop {
+                            match std::fs::read_to_string(IO::read("   Dateipfad der zu ladenden DB > ")) {
+                                Ok(c) => {
+                                    file_content = c;
+                                    break 'r;
+                                }
+                                Err(e) => {
+                                    println!("Datei konnte nicht gelesen werden: {}", e.to_string());
+                                }
+                            }
+                        }
+                        db.import(T::DB::from(file_content));
+                    }
+                    "settings" => {
+                        println!("Aktuelle DB-Settings: symmeth={} prefmat={} reviter={}", db.symmeth, db.prefmat, db.reviter);
+                        db.symmeth = IO::read_certain(&vec!["0", "1", "2", "3"], "    Welche Symmeth verwenden? > ", "    Zulässig sind nur 0 (Keine), 1 (Nur X), 2 (Nur Y) oder 3 (Beide).").parse::<u8>().unwrap();
+                        db.prefmat = IO::confirm("   Prefmat verwenden?");
+                        db.reviter = IO::confirm("   Reviter verwenden?");
+                    }
+                    "calc" => {
+                        let pos: Pos;
+                        'r: loop {
+                            match Pos::from(&IO::read("   Stellungscode > ")) {
+                                Ok(p) => {
+                                    pos = p;
+                                    break 'r;
+                                }
+                                Err(e) => {
+                                    println!("{}", e);
+                                }
+                            }
+                        }
+                        let p = Player::from(&IO::read_certain(&vec!["X", "O", "x", "o"], "   Player > ", "")).unwrap();
+                        let clock = Clock::new();
+                        println!("{}", message(db.calc(&pos, &p, false), clock.since()));
+                    }
+                    "stat" => {
+                        println!("Aktuelle Länge der DB: {}", db.len());
+                    }
+                    "clear db" => {
+                        if IO::confirm("Möchtest du wirklich die DB löschen?") { db.clear(); }
+                    }
+                    "c" => {
+                        print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                    }
+                    "" => {}
+                    c => { panic!("Ungültiger Befehl: {}", c); }
+                }
+            }
+        }
+        
+        "help" => {
             println!("{}", std::fs::read_to_string("help.txt").expect("help.txt konnte nicht gelesen werden."));
             println!("Bitte beachten: halbkreis und die Versionsauswahl bei calc sind im")
         }

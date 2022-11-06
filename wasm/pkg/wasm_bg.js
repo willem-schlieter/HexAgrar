@@ -183,10 +183,10 @@ export class BTRSInterface {
 }
 /**
 */
-export class TogreCalculator {
+export class TOGREInterface {
 
     static __wrap(ptr) {
-        const obj = Object.create(TogreCalculator.prototype);
+        const obj = Object.create(TOGREInterface.prototype);
         obj.ptr = ptr;
 
         return obj;
@@ -201,14 +201,20 @@ export class TogreCalculator {
 
     free() {
         const ptr = this.__destroy_into_raw();
-        wasm.__wbg_togrecalculator_free(ptr);
+        wasm.__wbg_togreinterface_free(ptr);
     }
     /**
-    * @returns {TogreCalculator}
+    * @param {string} db_code
+    * @param {number} symmeth
+    * @param {boolean} reviter
+    * @param {boolean} prefmat
+    * @returns {TOGREInterface}
     */
-    static new() {
-        const ret = wasm.togrecalculator_new();
-        return TogreCalculator.__wrap(ret);
+    static new(db_code, symmeth, reviter, prefmat) {
+        const ptr0 = passStringToWasm0(db_code, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.togreinterface_new(ptr0, len0, symmeth, reviter, prefmat);
+        return TOGREInterface.__wrap(ret);
     }
     /**
     * @param {string} poscode
@@ -220,14 +226,14 @@ export class TogreCalculator {
         const len0 = WASM_VECTOR_LEN;
         const ptr1 = passStringToWasm0(p, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len1 = WASM_VECTOR_LEN;
-        const ret = wasm.togrecalculator_calc(this.ptr, ptr0, len0, ptr1, len1);
+        const ret = wasm.togreinterface_calc(this.ptr, ptr0, len0, ptr1, len1);
         return ret;
     }
     /**
     * @returns {number}
     */
     len() {
-        const ret = wasm.togrecalculator_len(this.ptr);
+        const ret = wasm.togreinterface_len(this.ptr);
         return ret >>> 0;
     }
 }
