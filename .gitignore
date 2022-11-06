@@ -1,7 +1,6 @@
 .DS_Store
 **/.DS_Store
 Cargo.lock
-*.togredb
 *.hkdb
 
 /campus/node_modules
@@ -10,6 +9,8 @@ Cargo.lock
 /rusty-hexagrar/run
 /rusty-hexagrar/step_files
 rusty-hexagrar/build
+rusty-hexagrar/*.togredb
 
 /wasm/target
 /wasm/tests
+rusty-hexagrar/step_files BAK während 1. symmeth/result.togredb
