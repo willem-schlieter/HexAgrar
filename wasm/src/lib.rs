@@ -33,6 +33,14 @@ impl TOGREInterface {
             hexagrar::H::Togre::R => 0
         }
     }
+    pub fn get(&mut self, poscode: &str, p: &str) -> i8 {
+        match self.db.get(&hexagrar::H::Pos::from(poscode).unwrap(), &hexagrar::H::Player::from(p).unwrap()) {
+            Some(hexagrar::H::Togre::X) => 1,
+            Some(hexagrar::H::Togre::O) => -1,
+            Some(hexagrar::H::Togre::R) => 0,
+            None => -2
+        }
+    }
     pub fn len(&self) -> usize {
         self.db.len()
     }

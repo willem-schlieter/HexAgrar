@@ -1,7 +1,7 @@
 import H from "./core";
 import T from "./togre";
 import type { Autocode } from "./auto";
-import { writable, derived, Readable, readable } from "svelte/store";
+import { writable, derived, Readable, readable, Writable } from "svelte/store";
 
 export const lastMovTarget = writable(-1);
 
@@ -12,16 +12,23 @@ export const final = derived([stellung, amZug], ([s, a]) => {
     return (typeof r === "string") ? r : "";
 });
 
-export const mode = writable("spiel" as ("spiel" | "stat" | "togre"));
+export const mode = writable("ti" as ("spiel" | "stat" | "togre" | "ti"));
 export const statRunning = writable(false);
 export const togreRunning = writable(false);
+
+// Der Wert ist irrelevant. Es geht nur darum, dass immer, wenn die RustyTogre-DB geändert wird, dieser Wert geändert werden muss, damit Svelte darauf reagiert und die Werte im TOGREInspector updatet.
+export let rustyTChange = writable(0);
+
+// Enthält die Option, die gerade gehovered wird, sowie den Player, der diesen Zug macht.
+export let ti_hover: Writable<[H.Option, H.Player] | null> = writable(null);
+// Die Stellung, von der aus die Option ist.
+export let ti_before: Writable<[H.Numpos, H.Player]> = writable([H.convert.n("-"), H.Player.X]);
+export let ti_clicked_id: Writable<number> = writable(-1);
 
 // export const togreDB = readable(new T.DB("Die globale togreDB im Store."));
 
 // export const devView = writable(false);
-export const classicView = writable(false);
 export const view = writable("pro" as "pro" | "dev" | "std");
-export const vorschlagRechnen = writable(true);
 export const shouldValidate = writable(false);
 export const validate = derived([shouldValidate, view], ([s, v]) => s || (v === "std"));
 

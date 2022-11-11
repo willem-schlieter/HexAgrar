@@ -230,6 +230,19 @@ export class TOGREInterface {
         return ret;
     }
     /**
+    * @param {string} poscode
+    * @param {string} p
+    * @returns {number}
+    */
+    get(poscode, p) {
+        const ptr0 = passStringToWasm0(poscode, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(p, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.togreinterface_get(this.ptr, ptr0, len0, ptr1, len1);
+        return ret;
+    }
+    /**
     * @returns {number}
     */
     len() {

@@ -44,6 +44,12 @@ export class TOGREInterface {
 */
   calc(poscode: string, p: string): number;
 /**
+* @param {string} poscode
+* @param {string} p
+* @returns {number}
+*/
+  get(poscode: string, p: string): number;
+/**
 * @returns {number}
 */
   len(): number;

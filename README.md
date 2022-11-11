@@ -7,6 +7,8 @@ In `campus` befindet sich die WebApp, in der man das Spiel gegeneinander oder ge
 In `rusty-hexagrar` befindet sich in Rust geschriebene Software zu Hexagrar. Diese kann in der Kommandozeile ausgeführt werden.
 In `wasm` befindet sich ein WebAssembly-Modul, dass die Software aus `rusty-hexagrar` für den Campus verfügbar macht.
 
+BREAKING NEWS: Der TOGRE-Spielbaum ist dank einiger Optimierungen am TOGRE-Algorithmus, der Halbkreis-Technik und der unglaublichen Performance von Rust nun endlich vollständig gelöst! Im neuen Tool "TOGRE-Inspektor" kann man den Baum erkunden.
+
 ***Das Programm kann über GitHub Pages gestartet werden:***
 
 [https://willem-schlieter.github.io/HexAgrar/](https://willem-schlieter.github.io/HexAgrar/)

@@ -1,0 +1,81 @@
+* {
+    box-sizing: border-box;
+}
+#brett__ {
+    margin: auto;
+    border: 5px solid #4caf50;
+    background-color: #ccc;
+    border-radius: 8px;
+}
+#brett__.turn, #brett__.turn .feld {
+    transform: rotate(0.5turn);
+}
+#brett__.disabled {
+    filter: contrast(80%);
+    cursor: not-allowed;
+    border-color: grey;
+}
+
+.feld {
+    float: left;
+    width: calc(100% / 6);
+    height: calc(100% / 6);
+
+    border: 2px solid #777;
+    border-radius: 8px;
+    
+    background-color: #fffff5;
+
+    text-align: center;
+    font-size: 15pt;
+    color: white;
+
+    transition: 0.4s;
+}
+.feld:not(.green, .feldX, .feldO) {
+    background: linear-gradient(45deg, #999, #aaa);
+}
+.feldDark:not(.green, .feldX, .feldO) {
+    background-color: #aaa;
+    background: linear-gradient(45deg, #777, #888);
+}
+
+.feldX, .feldO {
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+.feldX {
+    background: no-repeat center/0% url("../../img/xd.png"), #222;
+}
+.feldO {
+    background: no-repeat center/0% url("../../img/ol.png"), white;
+    color: black;
+}
+.feldX.feldAmZug {
+    background: no-repeat center/50% url("../../img/xd.png"), #222;
+}
+.feldO.feldAmZug {
+    background: no-repeat center/50% url("../../img/ol.png"), white;
+}
+
+
+.feldSelected {
+    border-radius: 30px;
+}
+.feld.last_target {
+    border-color: #44f;
+}
+.rounded {
+    border-radius: 30px;
+}
+.blurred {
+    filter: blur(3px);
+}
+.green {
+    background-color: #8d8 !important;
+    color: black;
+}
+.green.feldX {
+    background-image: url("../../img/xl.png");
+}

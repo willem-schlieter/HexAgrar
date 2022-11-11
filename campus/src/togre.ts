@@ -1,5 +1,6 @@
 import H from "./core";
 import { TOGREInterface } from "wasm";
+import { rustyTChange } from "./stores";
 
 const preload_DB_Path = "preload.togredb";
 
@@ -391,6 +392,9 @@ export default T;
 
 export namespace RustyT {
     let wasm_interface: TOGREInterface | null = null;
+    /// Muss immer re-assigned werden, wenn die DB geändert wird. (Wegen Inspector.svelte)
+    export let change = 0;
+    let listeners: Array<() => void> = [() => rustyTChange.set(Math.random())];
 
     /** Muss aufgerufen werden, bevor RustyTogre verwendet werden kann! */
     export function init () {
@@ -401,15 +405,29 @@ export namespace RustyT {
             }
             else return res.text();
         }).then(c => {
-            console.log("preload.togredb Inhalt: ", c);
             wasm_interface = TOGREInterface.new(c, 3, true, true);
         });
     }
 
     /** Rückgabe: [Ergebnis, Anzahl Einträge] */
-    export function calc (s: H.Numpos, p: H.Player): [H.Final, number] {
-        if (! wasm_interface) { throw new Error("RustyTpgreDB wurde noch nicht geladen."); }
+    export function calc (s: H.Numpos, p: H.Player, secret?: boolean): [H.Final, number] {
+        if (! wasm_interface) { throw new Error("RustyTogreDB wurde noch nicht geladen."); }
         const before = wasm_interface.len();
+        if (! secret) listeners.forEach(l => l());
         return [["O", "R", "X"][wasm_interface.calc(H.convert.c(s), p.c) + 1] as H.Final, wasm_interface.len() - before];
+    }
+
+    export function get (s: H.Numpos, p: H.Player): H.Final | null {
+        if (! wasm_interface) { throw new Error("RustyTogreDB wurde noch nicht geladen."); }
+        return [null, "O", "R", "X"][wasm_interface.get(H.convert.c(s), p.c) + 2] as H.Final | null;
+    }
+
+    export function onchange (listener: () => void) {
+        listeners.push(listener);
+    }
+    /// Löscht, wenn vorhanden, den gegebenen Listener. (Muss identisch sein!)
+    export function removeListener(listener: () => void) {
+        const i = listeners.indexOf(listener);
+        if (i + 1) listeners.splice(i, 1);
     }
 }

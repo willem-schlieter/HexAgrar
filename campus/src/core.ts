@@ -23,13 +23,6 @@ namespace H {
         from: number,
         to: number
     }
-    export interface Feld {
-        dez: number;
-        x: number;
-        y: number;
-        chess_format: string;
-        alnum: string;
-    }
     export type FigCount = 0 | 1 | 2 | 3 | 4 | 5 | 6;
     export type MatCrit = (x: FigCount, o: FigCount) => number;
 
@@ -63,63 +56,60 @@ namespace H {
         }
         export function normalize (stellung: H.Numpos): H.Numpos {
             return [
-                stellung[0].sort(),
-                stellung[1].sort()
+                stellung[0].sort((a, b) => a - b),
+                stellung[1].sort((a, b) => a - b)
+            ] as H.Numpos;
+        }
+        export function sortByX (stellung: H.Numpos): H.Numpos {
+            return [
+                stellung[0].sort((a, b) => fconvert(a).x - fconvert(b).x),
+                stellung[1].sort((a, b) => fconvert(a).x - fconvert(b).x)
             ] as H.Numpos;
         }
     }
 
-    /**Gibt das `Feld` auf diesem Brett zurück.
-     * @param dez Dezimaler Index des Feldes
-     */
+    export type FeldFormat = "alnum" | "num" | "coord" | "chess";
     export function fconvert (dez: number): Feld;
-     /**Gibt das `Feld` auf diesem Brett zurück.
-      * @param x X-Koordinate
-      * @param y Y-Koordinate
-      */
     export function fconvert (x: number, y: number): Feld;
-     /**Gibt das `Feld` auf diesem Brett zurück.
-      * @param alnum Der alphanumerische Index des Feldes.
-      */
     export function fconvert (alnum: string): Feld;
-     /**Gibt das `Feld` auf diesem Brett zurück.
-      * @param p1 Der dezimale oder alphanumerische Index bzw. die X-Koordinate des Feldes.
-      * @param p2 Wenn gegeben, wird `p1` als X- und `p2` als Y-Koordinate behandelt.
-      */
     export function fconvert (p1: number | string, p2?: number): Feld {
-        const result = {
-            x: 0,
-            y: 0,
-            dez: 0,
-            alnum: "",
-            chess_format: ""
-        } as Feld;
         switch (typeof p1 + typeof p2) {
-            //Koordinaten
+            // Koordinaten
             case "numbernumber": {
                 if (Number.isNaN(p1) || Number.isNaN(p2) || ! Number.isInteger(p1) || ! Number.isInteger(p2) || p1 > 5 || p1 < 0 || p2! > 5 || p2! < 0) throw new Error("Invalid coordinates: " + p1 + "|" + p2);
-                // valide Koords
-                result.x = p1 as number; result.y = p2!;
-                result.chess_format = ["A", "B", "C", "D", "E", "F"][result.x] + (result.y + 1);
-                result.dez = (6 * p2!) + (p1 as number);
-                result.alnum = result.dez.toString(36);
-                return result;
+                return new Feld((6 * p2!) + (p1 as number));
             }
             // Dez oder Alnum
             case "numberundefined":
             case "stringundefined": {
                 let dez = (typeof p1 === "number") ? p1 as number : Number.parseInt(p1 as string, 36);
                 if (Number.isNaN(dez) || dez > 35 || dez < 0) throw new Error("Invalid field index.");
-                else {
-                    result.dez = dez;
-                    result.alnum = dez.toString(36);
-                    result.x = dez % 6;
-                    result.y = (dez - result.x) / 6;
-                    result.chess_format = ["A", "B", "C", "D", "E", "F"][result.x] + (result.y + 1);
-                }
-                return result;
+                return new Feld(dez);
             }
             default: throw new Error("Invalid format: " + typeof p1 + typeof p2);
+        }
+    }
+
+    class Feld {
+        dez: number;
+        x: number;
+        y: number;
+        alnum: string;
+        chess: string;
+        constructor (dez: number) {
+            this.dez = dez;
+            this.alnum = dez.toString(36);
+            this.x = dez % 6;
+            this.y = (dez - this.x) / 6;
+            this.chess = ["A", "B", "C", "D", "E", "F"][this.x] + (this.y + 1);
+        }
+        format (format: FeldFormat): string {
+            switch (format) {
+                case "num": return String(this.dez);
+                case "alnum": return this.alnum;
+                case "coord": return this.x + "|" + this.y;
+                case "chess": return this.chess;
+            }
         }
     }
 
@@ -351,6 +341,10 @@ namespace H {
         //     freibauern(a.ziel, p).map(f => f.fortschritt).reduce(((p, c) => (p + c)), 0) - freibauern(b.ziel, p).map(f => f.fortschritt).reduce(((p, c) => (p + c)), 0)
         // ));
         // return sorted.concat(includeAll ? terrible : []);
+    }
+    
+    export function logOptions(o: Option[]) {
+        console.log(o.map(op => op.from));
     }
     
     /** Ermittelt, ob die gegebene Stellung nicht-neutral syntaktisch final ist, also gewonnen für einen Player. */

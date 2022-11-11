@@ -1,7 +1,6 @@
 // @ts-ignore
 import App from './comp/App.svelte';
 
-
 import H from "./core";
 import T, {RustyT} from "./togre";
 import gener from "./halbkreis";
@@ -13,6 +12,7 @@ import { bestFraction } from './auto';
 (window as any).bestFraction = bestFraction;
 
 RustyT.init();
+console.log("RustyTogre initialisiert.");
 
 // Search Params auswerten
 import {stellung, amZug} from "./stores";

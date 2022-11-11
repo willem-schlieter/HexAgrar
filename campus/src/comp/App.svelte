@@ -13,8 +13,9 @@
 
     import H from "../core";
     import run from "../auto";
-    import { view, stellung, amZug, overlay, hist, final, action, state, auto_X, auto_O, auto_working, auto_auto, auto_wait, classicView, vorschlagRechnen, shouldValidate, mode, lastMovTarget } from "../stores";
+    import { view, stellung, amZug, overlay, hist, final, action, state, auto_X, auto_O, auto_working, auto_auto, auto_wait, shouldValidate, mode, lastMovTarget, ti_hover, ti_before } from "../stores";
     import {download} from "../tools";
+    import Inspektor from "./Inspektor.svelte";
 
     let selected = -1;
 
@@ -22,7 +23,7 @@
 
     let brett: Brett;
     let brettSize = 600;
-    let feldnummern: "alnum" | "num" | "coord" | "chess" | "" = "num";
+    let feldnummern: H.FeldFormat = "num";
     let turn = false;
 
     const unsubscribers = [] as Unsubscriber[];
@@ -75,6 +76,7 @@
             }
             case "z": {
                 if ($state === "aktiv") return;
+                $lastMovTarget = -1;
                 brett.undo();
                 break;
             }
@@ -90,6 +92,10 @@
                 if ($view !== "std" && event.ctrlKey) $mode = "togre";
                 break;
             }
+            case "4": {
+                if ($view !== "std" && event.ctrlKey) $mode = "ti";
+                break;
+            }
         }
     }
 
@@ -102,6 +108,13 @@
         (<HTMLElement>event.target).blur();
     }
 
+    function handleUserzug (ev) {
+        $lastMovTarget = -1;
+        $stellung = ev.detail.newpos;
+        $amZug = ev.detail.newp;
+        if ($auto_auto) autoCheck();
+        hist.add($stellung, $amZug);
+    }
 </script>
 
 <Status
@@ -110,88 +123,108 @@
     bind:hover
     {tauschen}
 />
-<div id="ROOT_L" class="ROOT">
+{#if $mode !== "ti"}
+    <div id="ROOT_L" class="ROOT">
 
-    <!-- svelte-ignore security-anchor-rel-noreferrer -->
-    <a
-        href={document.location.href + `?s=${H.convert.c($stellung)}&p=${$amZug.c}`}
-        target="_blank"
-        style="display: block; border: 1px solid white; border-radius: 5px; padding: 4px; background-color: white; margin-bottom: 10px;"
-    >Neues Fenster</a>
-    
-    Ansicht: <select bind:value={$view} disabled={$state === "aktiv"} on:input={blur}>
-        <option value="std">Normal</option>
-        <option value="dev">Entwickler</option>
-        <option value="pro">Programierer</option>
-    </select><br>
-    
-    <button disabled={$state === "aktiv"} on:click={() => brett.undo()}>Rückgängig</button><br>
-
-    {#if $view !== "std"}
-        <button on:click={tauschen} disabled={$state === "aktiv"}>Tauschen</button><br>
-        <button on:click={() => {$stellung = H.mirror($stellung)}}>Spiegeln (X-Achse)</button><br>
-
-        Modus: <select bind:value={$mode} disabled={$state === "aktiv"} on:input={blur}>
-            <option value="spiel">Spielbrett</option>
-            <option value="stat">Statistische Auswertung</option>
-            <option value="togre">TOGRE-Rechner</option>
+        <!-- svelte-ignore security-anchor-rel-noreferrer -->
+        <a
+            href={document.location.href + `?s=${H.convert.c($stellung)}&p=${$amZug.c}`}
+            target="_blank"
+            style="display: block; border: 1px solid white; border-radius: 5px; padding: 4px; background-color: white; margin-bottom: 10px;"
+        >Neues Fenster</a>
+        
+        Ansicht: <select bind:value={$view} disabled={$state === "aktiv"} on:input={blur}>
+            <option value="std">Normal</option>
+            <option value="dev">Entwickler</option>
+            <option value="pro">Programierer</option>
         </select><br>
         
-        <label><input type="checkbox" disabled={$state === "aktiv"} bind:checked={$shouldValidate}> Ungültige Züge sperren</label><br>
-    {/if}
-    <label><input disabled={$state === "aktiv"} type="checkbox" bind:checked={$vorschlagRechnen}> Mögliche Züge errechnen</label><br>
-    <label><input disabled={$state === "aktiv"} type="checkbox" bind:checked={turn}> Brett drehen</label><br>
+        <button disabled={$state === "aktiv"} on:click={() => brett.undo()}>Rückgängig</button><br>
 
-    {#if $view !== "std"}
-        <label style="display:inline;"><input disabled={$state === "aktiv"} type="checkbox" bind:checked={$classicView}> Klassische Ansicht</label><br>
-        Feldnummern-Format: <select bind:value={feldnummern} disabled={$state === "aktiv"} on:input={blur}>
-            <option value="">— Keine —</option>
-            <option value="alnum">Alphanumerisch</option>
-            <option value="num">Nummeriert</option>
-            <option value="coord">Koordinaten</option>
-            <option value="chess">Schach-Format</option>
-        </select>
-        <br><br>
-    {/if}
-    {#if $view === "pro" && $state !== "aktiv"}
-        <!-- <hr>
-        Halbkreis mit dem Grenzwert 9 über der Startstellung berechnen, als JSON kodieren und herunterladen:<br>
-        <button on:click={halbkreisgenerator}>Start</button> -->
-        <!-- <hr>
-        <button on:click={() => console.log($hist.map(e => e.stellung + " " + e.amZug + " " + e.auto))}>Log Hist</button>
-        <button on:click={() => console.log($final)}>Log Final</button>
-        <button on:click={() => console.log($overlay)}>Log Overlay</button>
-        <button on:click={() => console.log([$auto_X, $auto_O])}>Log Autos</button>
-        <button on:click={() => console.log($auto_working)}>Log store "auto_working"</button>
-        <button on:click={() => console.log($auto_wait)}>Log store "auto_wait"</button>
-        <button on:click={() => console.log($mode)}>Log store "mode"</button>
-        <button on:click={() => console.log(feldnummern)}>Log feldnummern</button> -->
-    {/if}
-</div>
-<div id="ROOT_M" class="ROOT">
-    <div class="M_tool__" class:M_tool__idle={$mode !== "spiel"}>
+        {#if $view !== "std"}
+            <button on:click={tauschen} disabled={$state === "aktiv"}>Tauschen</button><br>
+            <button on:click={() => {$stellung = H.mirror($stellung)}}>Spiegeln (X-Achse)</button><br>
+
+            Modus: <select bind:value={$mode} disabled={$state === "aktiv"} on:input={blur}>
+                <option value="spiel">Spielbrett</option>
+                <option value="stat">Statistische Auswertung</option>
+                <option value="togre">TOGRE-Rechner</option>
+                <option value="ti">TOGRE-Inspektor</option>
+            </select><br>
+            
+            <label><input type="checkbox" disabled={$state === "aktiv"} bind:checked={$shouldValidate}> Ungültige Züge sperren</label><br>
+        {/if}
+        <label><input disabled={$state === "aktiv"} type="checkbox" bind:checked={turn}> Brett drehen</label><br>
+
+        {#if $view !== "std"}
+            Feldnummern-Format: <select bind:value={feldnummern} disabled={$state === "aktiv"} on:input={blur}>
+                <option value="">— Keine —</option>
+                <option value="alnum">Alphanumerisch</option>
+                <option value="num">Nummeriert</option>
+                <option value="coord">Koordinaten</option>
+                <option value="chess">Schach-Format</option>
+            </select>
+            <br><br>
+        {/if}
+    </div>
+    <div id="ROOT_M" class="ROOT">
+        <div class="M_tool__" class:M_tool__idle={$mode !== "spiel"}>
+            <Brett
+                bind:stellung   = {$stellung}
+                bind:amZug      = {$amZug}
+                bind:this       = {brett}
+                bind:selected
+                bind:size       = {brettSize}
+                bind:hover
+                on:userzug={handleUserzug}
+                {feldnummern}
+                turn            = {turn}
+                emph            = {{lastTarget: $lastMovTarget}}
+                disabled        = {!! $final || ($state === "aktiv")}
+            />
+        </div>
+        <div class="M_tool__" class:M_tool__idle={$mode !== "stat"}>
+            <Statistik />
+        </div>
+        <div class="M_tool__" class:M_tool__idle={$mode !== "togre"}>
+            <Togre />
+        </div>
+    </div>
+    <div id="ROOT_R" class="ROOT">
+        <Automatenauswahl
+            on:autoCheck={autoCheck}
+        />
+    </div>
+{:else}
+    <div class="ROOT" id="TI_ROOT_R">
+        <Inspektor
+            stellung={$stellung}
+            player={$amZug}
+            on:userzug={handleUserzug}
+            {feldnummern}
+            disabled        = {!! $final || ($state === "aktiv")}
+        />
+    </div>
+    <div class="ROOT" id="TI_ROOT_L">
         <Brett
+            bind:stellung   = {$ti_before[0]}
+            bind:amZug      = {$ti_before[1]}
             bind:this       = {brett}
-            classic         = {$classicView}
-            vorschlag       = {true}
             bind:selected
             bind:size       = {brettSize}
             bind:hover
-            on:userzug={() => ($auto_auto ? autoCheck() : undefined)}
+            on:userzug={handleUserzug}
             {feldnummern}
             turn            = {turn}
+            emph            = {{
+                blurred: $ti_hover ? [$ti_hover[0].from] : [],
+                green: $ti_hover ? [$ti_hover[0].to] : [],
+                lastTarget: $lastMovTarget
+            }}
+            disabled        = {!! $final || ($state === "aktiv")}
         />
     </div>
-    <div class="M_tool__" class:M_tool__idle={$mode !== "stat"}>
-        <Statistik />
-    </div>
-    <div class="M_tool__" class:M_tool__idle={$mode !== "togre"}>
-        <Togre />
-    </div>
-</div>
-<div id="ROOT_R" class="ROOT">
-    <Automatenauswahl on:autoCheck={autoCheck}/>
-</div>
+{/if}
 
 {#if $overlay === "test"}
     <OverlayBase
@@ -246,5 +279,13 @@
     }
     #ROOT_L label {
         display: inline;
+    }
+
+    #TI_ROOT_L {
+        width: 650px;
+        padding: 10px;
+    }
+    #TI_ROOT_R {
+        width: calc(100% - 660px);
     }
 </style>
