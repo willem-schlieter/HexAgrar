@@ -12,7 +12,7 @@ export const final = derived([stellung, amZug], ([s, a]) => {
     return (typeof r === "string") ? r : "";
 });
 
-export const mode = writable("ti" as ("spiel" | "stat" | "togre" | "ti"));
+export const mode = writable("spiel" as ("spiel" | "stat" | "togre" | "ti"));
 export const statRunning = writable(false);
 export const togreRunning = writable(false);
 
