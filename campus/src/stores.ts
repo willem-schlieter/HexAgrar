@@ -19,10 +19,12 @@ export const togreRunning = writable(false);
 // Der Wert ist irrelevant. Es geht nur darum, dass immer, wenn die RustyTogre-DB geändert wird, dieser Wert geändert werden muss, damit Svelte darauf reagiert und die Werte im TOGREInspector updatet.
 export let rustyTChange = writable(0);
 
-// Enthält die Option, die gerade gehovered wird, sowie den Player, der diesen Zug macht.
+// TOGRE-INSPEKTOR
+// Option, die gerade gehovered wird
 export let ti_hover: Writable<[H.Option, H.Player] | null> = writable(null);
-// Die Stellung, von der aus die Option ist.
+// Startstellung dieser Option
 export let ti_before: Writable<[H.Numpos, H.Player]> = writable([H.convert.n("-"), H.Player.X]);
+// ID 
 export let ti_clicked_id: Writable<number> = writable(-1);
 
 // export const togreDB = readable(new T.DB("Die globale togreDB im Store."));
@@ -64,7 +66,7 @@ export const state = derived([final, auto_working, statRunning, togreRunning], (
 }) as Readable<"ende" | "bereit" | "aktiv">;
 
 
-type OverlayType = "final" | "test" | "stellung" | "auto_info" | "timing_info" | "none";
+type OverlayType = "final" | "test" | "stellung" | "auto_info_x" | "auto_info_o" | "timing_info" | "auto" | "none";
 export const overlay = writable("none" as OverlayType);
 
 const a = {

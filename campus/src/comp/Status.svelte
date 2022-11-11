@@ -1,7 +1,12 @@
 <script lang="ts">
     import H from "../core";
-    import Stellung from "./Stellung.svelte"
+    import Automatenauswahl from "./Automatenauswahl.svelte";
     import { amZug, hist, overlay, stellung, state, view } from "../stores";
+
+    export let action: string = "";
+    export let selected: number = -1;
+    export let hover: number = -1;
+    export let tauschen: () => void;
 
     function feldinfo (index: number): string {
         if (index + 1) {
@@ -10,30 +15,43 @@
         } else return "&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;";
     }
 
-    export let action: string = "";
-    export let selected: number = -1;
-    export let hover: number = -1;
-    export let tauschen: () => void;
-
 </script>
 
 <div id="__" class={$state}>
+    <!-- STELLUNGSCODE -->
     {#if $view !== "std"}
         <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <div id="stellung" on:click={() => {
+        <div id="stellung__" class:button={true} on:click={() => {
             if ($state !== "aktiv") $overlay = "stellung";
         }}>
-            <Stellung stellung={$stellung}/>
+            <span id="stellung">
+                {H.convert.c($stellung)}
+            </span>
         </div>
     {/if}
 
+    <!-- PLAYER -->
     <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <div id="amZug" on:click={() => ($view === "std" || $state === "aktiv") ? undefined : tauschen()} title={($view === "std") ? "Am Zug ist " + $amZug.c : "Tauschen durch Klicken"}>{$amZug.c}</div>
+    <div id="amZug" style="padding: 0;" class:button={true}
+        on:click={() => $view !== "std" && $state !== "aktiv" && tauschen()}
+        title={($view === "std") ? "Am Zug ist " + $amZug.c : "Tauschen durch Klicken"}
+    >
+        <img src={`./img/Fig${$amZug.c}.png`} width="43" alt="ONO">
+    </div>
 
     <div id="action" class:std={$view === "std"}>
         <span>
             {@html action.replace(" ", "&nbsp;")}
         </span>
+    </div>
+
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <div id="automat"
+        class:button={true}
+        style="padding: 0;"
+        on:click={() => { if ($state !== "aktiv") $overlay = "auto"}}
+    >
+        <img src="./img/roboter.png" width="45" alt="A" title="Automatenauswahl">
     </div>
 
     {#if $view !== "std"}
@@ -81,22 +99,53 @@
         text-align: center;
         border: 1px solid #444;
     }
-    #stellung {
+    #stellung__ {
         width: 200px;
     }
-    #amZug {
-        width: 40px;
+    #stellung {
+        display: inline-block;
+        height: 100%;
+        width: 100%;
+    }
+    #amZug, #automat {
+        width: 45px;
+    }
+    .button {
+        transition: 0.2s;
+    }
+    .button:hover {
+        background-color: #8c8;
+    }
+    #automat img {
+        margin: 0;
     }
     #selected, #hover {
         width: 145px;
     }
     #action {
-        width: calc(100% - 530px);
+        width: calc(100% - 580px);
         min-width: 190px;
         /* overflow-y: scroll; */
     }
     #action.std {
         width: calc(100% - 40px);
     }
+
+    /* Tooltip, das sich aufklappt, wenn parent-button gehovered wird. vllt mal praktisch… */
+    /* #auto_tool {
+        opacity: 0;
+        pointer-events: none;
+
+        background-color: #444;
+        position: absolute;
+        top: 45px;
+        transition: 0.2s;
+        border-radius: 3px;
+        box-shadow: 4px 4px 4px #000;
+    }
+    #automat:hover #auto_tool {
+        opacity: 1;
+        pointer-events: all;
+    } */
 
 </style>

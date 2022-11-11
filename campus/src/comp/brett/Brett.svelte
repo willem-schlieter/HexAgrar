@@ -2,8 +2,8 @@
     import {createEventDispatcher} from "svelte";
     const dispatch = createEventDispatcher();
     import H from "../../core";
-    import { final, hist, state, validate } from "../../stores";
-    import BrettBase from "./BrettBase.svelte"
+    import { validate } from "../../stores";
+    import BrettBase from "./BrettBase.svelte";
 
     export let stellung: H.Numpos;
     export let amZug: H.Player;
@@ -18,8 +18,6 @@
         lastTarget?: number
     };
     export let disabled: boolean;
-
-    hist.add(stellung, amZug);
 
     $: selectedPlayer = H.playerAufFeld(stellung, selected)!;
     $: vorschlaege = (selected + 1) ? H.zielfelder(stellung, selected, selectedPlayer) : [];
@@ -50,10 +48,6 @@
             if (canSelect(stellung, feldindex)) selected = feldindex;
             else console.debug("Feld konnte nicht ausgewählt werden.");
         }
-    }
-
-    export function undo (): void {
-        hist.undo();
     }
 
 </script>

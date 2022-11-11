@@ -11,14 +11,12 @@
 
     $: option = {from: -1, to: -1, ziel: stellung};
 
-    $: {
-        if ($ti_hover === null) $ti_before = [option.ziel, player];
-    }
+    $: if ($ti_hover === null) $ti_before = [option.ziel, player];
 
     let autocalc = false;
 </script>
 
-<div id="ROOT" class:disabled={disabled}>
+<div class="ROOT" id="L" class:disabled={disabled}>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <button style="display: inline" on:click={() => {$mode = "spiel"}}>Zurück</button>
     <label style="display: inline; margin-left: 10px" title="Führt zu Verlangsamung. Etwas instabil.">
@@ -37,14 +35,14 @@
             {autocalc}
         />
     </div>
-
 </div>
+<!-- <div class="ROOT" id="R" class:disabled={disabled}></div> -->
 
 <style>
     #__ {
         border: 4px solid green;
     }
-    #ROOT.disabled {
+    .ROOT.disabled {
         pointer-events: none;
         cursor: not-allowed;
         filter: contrast(50%);

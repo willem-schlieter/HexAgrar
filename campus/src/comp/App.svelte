@@ -1,12 +1,10 @@
 <script lang="ts">
     import Brett from "./brett/Brett.svelte";
     import Status from "./Status.svelte";
-    import OverlayBase from "./Overlays/OverlayBase.svelte";
-    import Stellung_Overlay from "./Overlays/Stellung_Overlay.svelte";
-    import Final_Overlay from "./Overlays/Final_Overlay.svelte";
     import Automatenauswahl from "./Automatenauswahl.svelte";
     import Statistik from "./Statistik.svelte";
     import Togre from "./Togre.svelte";
+    import OverlayManager from "./Overlays/OverlayManager.svelte";
     
     import { onMount, onDestroy } from "svelte";
     import type { Unsubscriber } from "svelte/store";
@@ -27,14 +25,12 @@
     let turn = false;
 
     const unsubscribers = [] as Unsubscriber[];
-
     unsubscribers.push(final.subscribe(f => {
         if (f) reportFinal(f);
     }));
     unsubscribers.push(view.subscribe(v => {
         if (v === "std") mode.set("spiel");
     }));
-
     onDestroy(() => unsubscribers.forEach(u => u()));
 
     function reportFinal (f: H.Final | "") {
@@ -77,7 +73,7 @@
             case "z": {
                 if ($state === "aktiv") return;
                 $lastMovTarget = -1;
-                brett.undo();
+                hist.undo();
                 break;
             }
             case "1": {
@@ -108,6 +104,7 @@
         (<HTMLElement>event.target).blur();
     }
 
+    hist.add($stellung, $amZug);
     function handleUserzug (ev) {
         $lastMovTarget = -1;
         $stellung = ev.detail.newpos;
@@ -115,6 +112,7 @@
         if ($auto_auto) autoCheck();
         hist.add($stellung, $amZug);
     }
+
 </script>
 
 <Status
@@ -226,22 +224,10 @@
     </div>
 {/if}
 
-{#if $overlay === "test"}
-    <OverlayBase
-        width={500}
-    >
-        Test-Overlay
-        <input type="text">
-    </OverlayBase>
-{/if}
-{#if $overlay === "stellung"}
-    <Stellung_Overlay/>
-{/if}
-{#if $overlay === "final"}
-    <Final_Overlay
-        final = {$final}
-    ></Final_Overlay>
-{/if}
+
+<OverlayManager
+    on:autoCheck={autoCheck}
+/>
 
 <svelte:window on:keyup={handleKeyup}></svelte:window>
 
