@@ -12,7 +12,7 @@ export const final = derived([stellung, amZug], ([s, a]) => {
     return (typeof r === "string") ? r : "";
 });
 
-export const mode = writable("spiel" as ("spiel" | "stat" | "togre" | "ti"));
+export const mode = writable("spiel" as ("spiel" | "stat" | "togre" | "ti" | "compose"));
 export const statRunning = writable(false);
 export const togreRunning = writable(false);
 
@@ -31,6 +31,7 @@ export let ti_clicked_id: Writable<number> = writable(-1);
 
 // export const devView = writable(false);
 export const view = writable("pro" as "pro" | "dev" | "std");
+export const mobile = writable(false);
 export const shouldValidate = writable(false);
 export const validate = derived([shouldValidate, view], ([s, v]) => s || (v === "std"));
 

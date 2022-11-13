@@ -1,5 +1,6 @@
 <script lang="ts">
     import Brett from "./brett/Brett.svelte";
+    import BrettBase from "./brett/BrettBase.svelte";
     import Status from "./Status.svelte";
     import Automatenauswahl from "./Automatenauswahl.svelte";
     import Statistik from "./Statistik.svelte";
@@ -11,16 +12,18 @@
 
     import H from "../core";
     import run from "../auto";
-    import { view, stellung, amZug, overlay, hist, final, action, state, auto_X, auto_O, auto_working, auto_auto, auto_wait, shouldValidate, mode, lastMovTarget, ti_hover, ti_before } from "../stores";
+    import { view, stellung, amZug, overlay, hist, final, action, state, auto_X, auto_O, auto_working, auto_auto, auto_wait, shouldValidate, mode, lastMovTarget, ti_hover, ti_before, mobile } from "../stores";
     import {download} from "../tools";
     import Inspektor from "./Inspektor.svelte";
+
+    if (window.innerWidth < 500) $mobile = true;
 
     let selected = -1;
 
     let hover = -1;
 
     let brett: Brett;
-    let brettSize = 600;
+    let brettSize = Math.min(600, window.innerWidth - 20);
     let feldnummern: H.FeldFormat = "num";
     let turn = false;
 
@@ -113,6 +116,32 @@
         hist.add($stellung, $amZug);
     }
 
+    let composedPos: H.Numpos = [[], []];
+    let composeX = true;
+    function compose (feldindex: number) {
+        const part = composedPos[composeX ? 0 : 1];
+        const other = composedPos[composeX ? 1 : 0];
+        const ix = part.indexOf(feldindex);
+        if (ix + 1) part.splice(ix, 1);
+        else {
+            let ix = other.indexOf(feldindex);
+            if (ix + 1) other.splice(ix, 1);
+            part.push(feldindex);
+        }
+        composedPos = H.convert.normalize(composedPos);
+    }
+    function clearComposed () {
+        composedPos = [[], []];
+    }
+    function handleCompose () {
+        handleUserzug({detail: {
+            newpos: composedPos,
+            newp: $amZug
+        }});
+        $mode = "spiel";
+        clearComposed();
+    }
+
 </script>
 
 <Status
@@ -122,64 +151,89 @@
     {tauschen}
 />
 {#if $mode !== "ti"}
-    <div id="ROOT_L" class="ROOT">
+    {#if $mobile === false}
+        <div id="ROOT_L" class="ROOT">
 
-        <!-- svelte-ignore security-anchor-rel-noreferrer -->
-        <a
-            href={document.location.href + `?s=${H.convert.c($stellung)}&p=${$amZug.c}`}
-            target="_blank"
-            style="display: block; border: 1px solid white; border-radius: 5px; padding: 4px; background-color: white; margin-bottom: 10px;"
-        >Neues Fenster</a>
-        
-        Ansicht: <select bind:value={$view} disabled={$state === "aktiv"} on:input={blur}>
-            <option value="std">Normal</option>
-            <option value="dev">Entwickler</option>
-            <option value="pro">Programierer</option>
-        </select><br>
-        
-        <button disabled={$state === "aktiv"} on:click={() => brett.undo()}>Rückgängig</button><br>
-
-        {#if $view !== "std"}
-            <button on:click={tauschen} disabled={$state === "aktiv"}>Tauschen</button><br>
-            <button on:click={() => {$stellung = H.mirror($stellung)}}>Spiegeln (X-Achse)</button><br>
-
-            Modus: <select bind:value={$mode} disabled={$state === "aktiv"} on:input={blur}>
-                <option value="spiel">Spielbrett</option>
-                <option value="stat">Statistische Auswertung</option>
-                <option value="togre">TOGRE-Rechner</option>
-                <option value="ti">TOGRE-Inspektor</option>
+            <!-- svelte-ignore security-anchor-rel-noreferrer -->
+            <a
+                href={document.location.href + `?s=${H.convert.c($stellung)}&p=${$amZug.c}`}
+                target="_blank"
+                style="display: block; border: 1px solid white; border-radius: 5px; padding: 4px; background-color: white; margin-bottom: 10px;"
+            >Neues Fenster</a>
+            
+            Ansicht: <select bind:value={$view} disabled={$state === "aktiv"} on:input={blur}>
+                <option value="std">Normal</option>
+                <option value="dev">Entwickler</option>
+                <option value="pro">Programierer</option>
             </select><br>
             
-            <label><input type="checkbox" disabled={$state === "aktiv"} bind:checked={$shouldValidate}> Ungültige Züge sperren</label><br>
-        {/if}
-        <label><input disabled={$state === "aktiv"} type="checkbox" bind:checked={turn}> Brett drehen</label><br>
+            <button disabled={$state === "aktiv"} on:click={() => brett.undo()}>Rückgängig</button><br>
 
-        {#if $view !== "std"}
-            Feldnummern-Format: <select bind:value={feldnummern} disabled={$state === "aktiv"} on:input={blur}>
-                <option value="">— Keine —</option>
-                <option value="alnum">Alphanumerisch</option>
-                <option value="num">Nummeriert</option>
-                <option value="coord">Koordinaten</option>
-                <option value="chess">Schach-Format</option>
-            </select>
-            <br><br>
-        {/if}
-    </div>
+            {#if $view !== "std"}
+                <button on:click={tauschen} disabled={$state === "aktiv"}>Tauschen</button><br>
+                <button on:click={() => {$stellung = H.mirror($stellung)}}>Spiegeln (X-Achse)</button><br>
+
+                Modus: <select bind:value={$mode} disabled={$state === "aktiv"} on:input={blur}>
+                    <option value="spiel">Spielbrett</option>
+                    <option value="stat">Statistische Auswertung</option>
+                    <option value="togre">TOGRE-Rechner</option>
+                    <option value="ti">TOGRE-Inspektor</option>
+                    <option value="compose">Stellungs-Komposition</option>
+                </select><br>
+                
+                <label><input type="checkbox" disabled={$state === "aktiv"} bind:checked={$shouldValidate}> Ungültige Züge sperren</label><br>
+            {/if}
+            <label><input disabled={$state === "aktiv"} type="checkbox" bind:checked={turn}> Brett drehen</label><br>
+
+            {#if $view !== "std"}
+                Feldnummern-Format: <select bind:value={feldnummern} disabled={$state === "aktiv"} on:input={blur}>
+                    <option value="">— Keine —</option>
+                    <option value="alnum">Alphanumerisch</option>
+                    <option value="num">Nummeriert</option>
+                    <option value="coord">Koordinaten</option>
+                    <option value="chess">Schach-Format</option>
+                </select>
+                <br><br>
+            {/if}
+        </div>
+    {/if}
     <div id="ROOT_M" class="ROOT">
-        <div class="M_tool__" class:M_tool__idle={$mode !== "spiel"}>
-            <Brett
-                bind:stellung   = {$stellung}
-                bind:amZug      = {$amZug}
-                bind:this       = {brett}
-                bind:selected
-                bind:size       = {brettSize}
-                bind:hover
-                on:userzug={handleUserzug}
-                {feldnummern}
-                turn            = {turn}
-                emph            = {{lastTarget: $lastMovTarget}}
-                disabled        = {!! $final || ($state === "aktiv")}
-            />
+        <div class="M_tool__" class:M_tool__idle={$mode !== "spiel" && $mode !== "compose"}>
+            {#if $mode !== "compose"}
+                <Brett
+                    bind:stellung   = {$stellung}
+                    bind:amZug      = {$amZug}
+                    bind:this       = {brett}
+                    bind:selected
+                    bind:size       = {brettSize}
+                    bind:hover
+                    on:userzug={handleUserzug}
+                    {feldnummern}
+                    turn            = {turn}
+                    emph            = {{lastTarget: $lastMovTarget}}
+                    disabled        = {!! $final || ($state === "aktiv")}
+                />
+            {:else}
+                <!-- svelte-ignore a11y-click-events-have-key-events -->
+                <img src="./img/FigX.png" alt="X" width="40" on:click={() => composeX = true} style={composeX ? "border: 2px solid blue" : ""}>
+                <!-- svelte-ignore a11y-click-events-have-key-events -->
+                <img src="./img/FigO.png" alt="O" width="40" on:click={() => composeX = false} style={composeX ? "" : "border: 2px solid blue"}>
+                <button on:click={clearComposed}>Clear</button>
+                <button on:click={handleCompose}>Diese Stellung setzen.</button>
+                <BrettBase
+                    stellung        = {composedPos}
+                    selected        = {-1}
+                    xAmZug          = {true}
+                    oAmZug          = {true}
+                    size            = {brettSize - 30}
+                    bind:hover
+                    {feldnummern}
+                    {turn}
+                    emph = {{}}
+                    disabled        = {!! $final || ($state === "aktiv")}
+                    on:feldclick    = {(ev) => compose(ev.detail.feldindex)}
+                />
+            {/if}
         </div>
         <div class="M_tool__" class:M_tool__idle={$mode !== "stat"}>
             <Statistik />
@@ -188,11 +242,13 @@
             <Togre />
         </div>
     </div>
-    <div id="ROOT_R" class="ROOT">
-        <Automatenauswahl
-            on:autoCheck={autoCheck}
-        />
-    </div>
+    {#if $mobile === false}
+        <div id="ROOT_R" class="ROOT">
+            <Automatenauswahl
+                on:autoCheck={autoCheck}
+            />
+        </div>
+    {/if}
 {:else}
     <div class="ROOT" id="TI_ROOT_R">
         <Inspektor
@@ -242,10 +298,9 @@
         background-color: #222;
         color: white;
     }
-    #ROOT_M {
+    /* #ROOT_M {
         width: 650px;
-        /* border: 5px dotted green; */
-    }
+    } */
     #ROOT_L, #ROOT_R {
         width: calc(50% - 325px);
         padding: 10px;

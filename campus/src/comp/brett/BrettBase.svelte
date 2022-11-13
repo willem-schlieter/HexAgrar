@@ -1,7 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher } from "svelte";
     import H from "../../core";
-    import { view } from "../../stores";
+    import { view, mobile } from "../../stores";
     
     const dispatch = createEventDispatcher();
 
@@ -46,6 +46,7 @@
         >
             {#if $view !== "std"}
                 {(function(){
+                    if ($mobile) return "";
                     const f = H.fconvert(feldindex);
                     switch (feldnummern) {
                         case "alnum": return f.alnum;
@@ -59,7 +60,6 @@
         </div>
     {/each}
 </div>
-
 
 <svelte:head>
     <link rel="stylesheet" href="./brett.css">

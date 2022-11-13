@@ -1,7 +1,7 @@
 <script lang="ts">
     import H from "../core";
     import Automatenauswahl from "./Automatenauswahl.svelte";
-    import { amZug, hist, overlay, stellung, state, view } from "../stores";
+    import { amZug, hist, overlay, stellung, state, view, mobile } from "../stores";
 
     export let action: string = "";
     export let selected: number = -1;
@@ -19,7 +19,7 @@
 
 <div id="__" class={$state}>
     <!-- STELLUNGSCODE -->
-    {#if $view !== "std"}
+    {#if $view !== "std" && $mobile === false}
         <!-- svelte-ignore a11y-click-events-have-key-events -->
         <div id="stellung__" class:button={true} on:click={() => {
             if ($state !== "aktiv") $overlay = "stellung";
@@ -39,12 +39,16 @@
         <img src={`./img/Fig${$amZug.c}.png`} width="43" alt="ONO">
     </div>
 
-    <div id="action" class:std={$view === "std"}>
-        <span>
-            {@html action.replace(" ", "&nbsp;")}
-        </span>
-    </div>
+    <!-- ACTION-TEXT -->
+    {#if $mobile === false}
+        <div id="action" class:std={$view === "std"}>
+            <span>
+                {@html action.replace(" ", "&nbsp;")}
+            </span>
+        </div>
+    {/if}
 
+    <!-- AUTOMAT_BUTTON -->
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div id="automat"
         class:button={true}
@@ -54,7 +58,8 @@
         <img src="./img/roboter.png" width="45" alt="A" title="Automatenauswahl">
     </div>
 
-    {#if $view !== "std"}
+    <!-- FELDDATEN -->
+    {#if $view !== "std" && $mobile == false}
         <div id="selected">{@html feldinfo(selected)}</div>
         <div id="hover">{@html feldinfo(hover)}</div>
     {/if}
