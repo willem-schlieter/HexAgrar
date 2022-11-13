@@ -46,19 +46,18 @@
     background-position: center;
 }
 .feldX {
-    background: no-repeat center/0% url("../../img/xd.png"), #222;
+    background: no-repeat center/0% url("./img/xd.png"), #222;
 }
 .feldO {
-    background: no-repeat center/0% url("../../img/ol.png"), white;
+    background: no-repeat center/0% url("./img/ol.png"), white;
     color: black;
 }
 .feldX.feldAmZug {
-    background: no-repeat center/50% url("../../img/xd.png"), #222;
+    background: no-repeat center/50% url("./img/xd.png"), #222;
 }
 .feldO.feldAmZug {
-    background: no-repeat center/50% url("../../img/ol.png"), white;
+    background: no-repeat center/50% url("./img/ol.png"), white;
 }
-
 
 .feldSelected {
     border-radius: 30px;
@@ -77,5 +76,5 @@
     color: black;
 }
 .green.feldX {
-    background-image: url("../../img/xl.png");
+    background-image: url("./img/xl.png");
 }
