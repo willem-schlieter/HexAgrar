@@ -229,10 +229,10 @@ pub mod H {
             let mut x: Vec<i8> = vec![];
             let mut o: Vec<i8> = vec![];
             for f in &self.0 {
-                x.push(f - (f % 6) + (5 - (f % 6)));
+                x.push(f + 5 - 2 * (f % 6));
             };
             for f in &self.1 {
-                o.push(f - (f % 6) + (5 - (f % 6)));
+                o.push(f + 5 - 2 * (f % 6));
             };
             x.sort_unstable();
             o.sort_unstable();
@@ -245,10 +245,10 @@ pub mod H {
             let mut x: Vec<i8> = vec![];
             let mut o: Vec<i8> = vec![];
             for f in &self.0 {
-                o.push(f + (((f - (f % 6)) / 3) - 5) * -6);
+                o.push(30 - f + 2 * (f % 6));
             }
             for f in &self.1 {
-                x.push(f + (((f - (f % 6)) / 3) - 5) * -6);
+                x.push(30 - f + 2 * (f % 6));
             }
             x.sort_unstable();
             o.sort_unstable();
