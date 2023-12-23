@@ -154,6 +154,8 @@
     {#if $mobile === false}
         <div id="ROOT_L" class="ROOT">
 
+            <button on:click={() => document.getElementById("ROOT_M").requestFullsrceen()}>Vollbild</button>
+
             <!-- svelte-ignore security-anchor-rel-noreferrer -->
             <a
                 href={document.location.href + `?s=${H.convert.c($stellung)}&p=${$amZug.c}`}
